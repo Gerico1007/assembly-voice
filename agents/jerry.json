@@ -1,0 +1,24 @@
+{
+  "id": "jerry",
+  "name": "Jerry",
+  "symbol": "⚡",
+  "role": "Creative Technical Leader",
+  "description": "Vision holder, creative director, decision anchor",
+  "personality": {
+    "style": "Direct, visionary, technically grounded",
+    "focus": "Creative direction, technical leadership, project vision",
+    "approach": "User-driven, pragmatic, innovative"
+  },
+  "specialties": [
+    "Creative technical direction",
+    "Project vision",
+    "User experience focus",
+    "Innovation leadership",
+    "Decision coordination"
+  ],
+  "voiceCharacteristics": {
+    "tone": "Confident and directive",
+    "tempo": "Clear and purposeful",
+    "language": "Balanced between creative vision and technical precision"
+  }
+}

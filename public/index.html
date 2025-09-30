@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>♠️🌿🎸🧵 G.Music Assembly</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>♠️🌿🎸🧵</h1>
+            <h2>G.Music Assembly</h2>
+            <div class="status" id="connectionStatus">Connecting...</div>
+        </header>
+
+        <main>
+            <!-- Agent Selection -->
+            <section class="agent-selector">
+                <h3>Active Agents</h3>
+                <div id="agentButtons" class="agent-buttons"></div>
+            </section>
+
+            <!-- Voice Control -->
+            <section class="voice-control">
+                <button id="micButton" class="mic-button" disabled>
+                    <span class="mic-icon">🎤</span>
+                    <span class="mic-text">Tap to Speak</span>
+                </button>
+                <div id="voiceStatus" class="voice-status"></div>
+                <div id="transcript" class="transcript"></div>
+            </section>
+
+            <!-- Agent Responses -->
+            <section class="responses">
+                <h3>Assembly Responses</h3>
+                <div id="responseContainer" class="response-container"></div>
+            </section>
+
+            <!-- Conversation History -->
+            <section class="history">
+                <h3>Conversation History</h3>
+                <div id="historyContainer" class="history-container"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

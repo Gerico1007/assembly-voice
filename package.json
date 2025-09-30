@@ -1,0 +1,19 @@
+{
+  "name": "gmusic-voice-assembly",
+  "version": "1.0.0",
+  "description": "Voice-enabled web app for G.Music Assembly agent interaction",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["voice", "assembly", "agents", "gmusic"],
+  "author": "Jerry ⚡",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "cors": "^2.8.5",
+    "selfsigned": "^2.4.1"
+  }
+}
