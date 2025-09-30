@@ -17,22 +17,26 @@ Voice-enabled web application for interacting with the G.Music Assembly agents o
    npm install
    ```
 
-2. **Generate SSL certificates** (required for HTTPS):
+2. **Start the server** (recommended):
    ```bash
-   node generate-certs.js
+   ./start-server.sh
    ```
-   This creates self-signed certificates in the `ssl/` directory for secure WebSocket connections.
+   This script automatically:
+   - Generates SSL certificates if they don't exist
+   - Finds an available port (starting from 3000)
+   - Starts the server
 
-3. **Start the server**:
+   **Alternative manual start:**
    ```bash
-   npm start
+   node generate-certs.js  # Only needed first time
+   npm start               # Uses port 3000 by default
    ```
-   Default port is 3000. To use a different port:
+   To use a specific port:
    ```bash
    PORT=3001 npm start
    ```
 
-4. **Access from your phone**:
+3. **Access from your phone**:
    - The terminal will display two URLs
    - Use the **Network URL** (e.g., `https://192.168.x.x:3000`) on your Android phone
    - Make sure your phone is on the same WiFi network
@@ -58,13 +62,16 @@ Voice-enabled web application for interacting with the G.Music Assembly agents o
 
 ```
 workspace/
-├── agents/           # Agent embodiment JSON files
-├── public/           # Web interface files
-│   ├── index.html    # Main HTML
-│   ├── style.css     # Styles
-│   └── app.js        # Client-side JavaScript
-├── server.js         # Node.js/Express server
-└── package.json      # Dependencies
+├── agents/              # Agent embodiment JSON files
+├── public/              # Web interface files
+│   ├── index.html       # Main HTML
+│   ├── style.css        # Styles
+│   └── app.js           # Client-side JavaScript
+├── ssl/                 # SSL certificates (auto-generated)
+├── server.js            # Node.js/Express server
+├── start-server.sh      # Automated startup script
+├── generate-certs.js    # SSL certificate generator
+└── package.json         # Dependencies
 ```
 
 ## Technologies
