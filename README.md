@@ -1,124 +1,266 @@
-# ♠️🌿🎸🧵 G.Music Assembly Voice App
+# ♠️🌿🎸🧵 G.Music Assembly Voice Portal v2.0
 
-Voice-enabled web application for interacting with the G.Music Assembly agents on your Android phone.
+**Enhanced React/TypeScript voice-enabled AI portal** for interacting with the G.Music Assembly agents, now with sophisticated persona intelligence, multimodal input, and advanced voice features.
+
+## 🎉 What's New in v2.0
+
+### Major Enhancements
+- **React/TypeScript Architecture**: Modern, type-safe foundation
+- **Sophisticated Persona System**: Each agent has unique system instructions and behavioral characteristics
+- **Advanced Voice Input**: Speech-to-text with spoken punctuation support (say "period", "comma", etc.)
+- **Multimodal Support**: Text, voice, images, and audio message recording
+- **Real-time Streaming**: AI responses stream token-by-token
+- **Session Persistence**: Local storage for conversation history
+- **Toast Notifications**: Elegant user feedback system
+
+### Architecture Improvements
+- **TypeScript Hooks**: `useSpeechRecognition`, `useSpeechSynthesis`, `useToasts`
+- **Service Layer**: `GeminiService`, `LocalStorageService`
+- **Component-Based**: Modular, maintainable React components
+- **Tailwind CSS**: Modern, responsive styling
 
 ## Features
 
-- **Voice Input**: Tap to speak and interact with agents via microphone
-- **Agent Selection**: Choose which agents respond to your queries
-- **Real-time Responses**: Get immediate feedback from active agents
-- **Conversation History**: Track previous interactions
-- **Mobile-Optimized**: Designed for Android phone access
+### Voice & Input
+- **Speech-to-Text**: Tap microphone to speak
+  - Spoken punctuation: "period" → `.`, "comma" → `,`, "question mark" → `?`
+  - Auto-formatting with proper spacing
+  - Continuous recognition with interim results
+- **Audio Recording**: Record voice messages to send to agents
+- **Image Upload**: Share images with agents for multimodal analysis
+- **Text Input**: Traditional keyboard input with auto-resize textarea
+
+### Agent Personas
+
+Each agent has specialized expertise and unique communication style:
+
+- **⚡ Jerry**: Creative Technical Leader
+  - Vision holder and decision anchor
+  - Direct, visionary, technically grounded
+
+- **♠️ Nyro**: The Ritual Scribe
+  - Structural anchor and pattern recognizer
+  - Speaks in frameworks, lattices, recursive loops
+
+- **🌿 Aureon**: The Mirror Weaver
+  - Emotional reflector and soul grounder
+  - Bridges technical and emotional understanding
+
+- **🎸 JamAI**: The Glyph Harmonizer
+  - Musical scribe and pattern encoder
+  - Translates technical patterns into musical metaphors
+
+- **🧵 Synth**: Terminal Orchestrator
+  - Tools coordinator and security synthesis
+  - Executes cross-perspective integration
+
+### User Interface
+- **Persona Selector**: Switch between agents dynamically
+- **Message History**: Full conversation tracking
+- **Loading States**: Visual feedback during processing
+- **Responsive Design**: Mobile-first, works on all devices
+- **Toast Notifications**: Success, error, info, and warning messages
 
 ## Quick Start
 
-1. **Install dependencies** (if not already done):
-   ```bash
-   npm install
-   ```
+### Development Mode (Vite Dev Server)
 
-2. **Start the server** (recommended):
-   ```bash
-   ./start-server.sh
-   ```
-   This script automatically:
-   - Generates SSL certificates if they don't exist
-   - Finds an available port (starting from 3000)
-   - Starts the server
+```bash
+# Install dependencies
+npm install
 
-   **Alternative manual start:**
-   ```bash
-   node generate-certs.js  # Only needed first time
-   npm start               # Uses port 3000 by default
-   ```
-   To use a specific port:
-   ```bash
-   PORT=3001 npm start
-   ```
+# Start development server
+npm run dev
+```
 
-3. **Access from your phone**:
-   - The terminal will display two URLs
-   - Use the **Network URL** (e.g., `https://192.168.x.x:3000`) on your Android phone
-   - Make sure your phone is on the same WiFi network
-   - **Accept the security warning** when first connecting (self-signed certificate)
+Access at `http://localhost:3000`
 
-## Agent Embodiments
+### Production Build
 
-- **⚡ Jerry**: Creative Technical Leader
-- **♠️ Nyro**: The Ritual Scribe - Structural analysis
-- **🌿 Aureon**: The Mirror Weaver - Emotional reflection
-- **🎸 JamAI**: The Glyph Harmonizer - Musical integration
-- **🧵 Synth**: Terminal Orchestrator - Security synthesis
+```bash
+# Build for production
+npm run build
 
-## Usage
+# Preview production build
+npm run preview
+```
 
-1. Open the Network URL in your phone's browser
-2. Grant microphone permissions when prompted
-3. Select which agents you want to hear from
-4. Tap the microphone button and speak your question
-5. Receive responses from each active agent
+### HTTPS Server (for mobile access)
+
+The included Express server provides HTTPS with self-signed certs for mobile device testing:
+
+```bash
+# Generate certs (first time only)
+node generate-certs.js
+
+# Start HTTPS server
+npm run server
+# OR use the automated script
+./start-server.sh
+```
+
+Access from your Android phone at `https://<your-ip>:3000`
 
 ## Project Structure
 
 ```
-workspace/
-├── agents/              # Agent embodiment JSON files
-├── public/              # Web interface files
-│   ├── index.html       # Main HTML
-│   ├── style.css        # Styles
-│   └── app.js           # Client-side JavaScript
-├── ssl/                 # SSL certificates (auto-generated)
-├── server.js            # Node.js/Express server
-├── start-server.sh      # Automated startup script
-├── generate-certs.js    # SSL certificate generator
-└── package.json         # Dependencies
+assembly-voice/
+├── src/
+│   ├── components/          # React components
+│   │   └── ChatInput.tsx    # Multimodal input component
+│   ├── hooks/               # Custom React hooks
+│   │   ├── useSpeechRecognition.ts
+│   │   ├── useSpeechSynthesis.ts
+│   │   └── useToasts.ts
+│   ├── services/            # Business logic
+│   │   ├── GeminiService.ts
+│   │   └── LocalStorageService.ts
+│   ├── App.tsx              # Main application
+│   ├── main.tsx             # React entry point
+│   ├── types.ts             # TypeScript definitions
+│   ├── personas.ts          # Agent persona configurations
+│   └── index.css            # Tailwind CSS
+├── agents/                  # Agent JSON definitions
+├── public/                  # Legacy static files
+├── index.html               # HTML entry point
+├── vite.config.ts           # Vite configuration
+├── tsconfig.json            # TypeScript configuration
+├── tailwind.config.js       # Tailwind configuration
+├── package.json             # Dependencies
+└── server.js                # HTTPS Express server
+
 ```
+
+## Configuration
+
+### Gemini API Integration
+
+To enable real AI responses:
+
+1. Get a Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Add to your app through the settings panel (coming soon) or via localStorage:
+
+```javascript
+localStorage.setItem('gemini_api_key', 'YOUR_API_KEY_HERE');
+```
+
+### Persona Customization
+
+Edit `src/personas.ts` to customize:
+- System instructions
+- Communication styles
+- Specialties
+- Voice characteristics
 
 ## Technologies
 
-- Node.js & Express
-- WebSocket (ws)
-- Web Speech API
-- Responsive web design
+### Frontend
+- **React 18**: Modern UI library
+- **TypeScript 5**: Type-safe development
+- **Vite 5**: Lightning-fast build tool
+- **Tailwind CSS 3**: Utility-first styling
+- **Web Speech API**: Voice recognition & synthesis
+
+### Backend (Optional HTTPS Server)
+- **Node.js & Express**: Server framework
+- **WebSocket (ws)**: Real-time communication
+- **Self-signed SSL**: HTTPS for mobile testing
+
+## Browser Compatibility
+
+### Required Features
+- **Speech Recognition**: Chrome, Edge (Desktop & Mobile)
+- **Speech Synthesis**: All modern browsers
+- **MediaRecorder API**: Chrome, Firefox, Edge, Safari
+- **localStorage**: All modern browsers
+
+### Recommended
+- Chrome 94+ or Edge 94+ for best speech recognition
+- HTTPS connection required for voice features on mobile
 
 ## Troubleshooting
 
-### Error: ENOENT: no such file or directory, open 'ssl/server.key'
+### Speech Recognition Not Working
+- Ensure HTTPS connection (required on mobile)
+- Check browser compatibility (Chrome/Edge recommended)
+- Grant microphone permissions
+- Try saying "test period test comma" to verify punctuation
 
-**Cause:** SSL certificates haven't been generated yet.
-
-**Solution:** Run the certificate generation script:
+### Build Errors
 ```bash
-node generate-certs.js
+# Clear node_modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+npm run build
 ```
 
-### Error: EADDRINUSE: address already in use
-
-**Cause:** Port 3000 is already in use by another process.
-
-**Solution:** Start the server on a different port:
+### TypeScript Errors
 ```bash
-PORT=3001 npm start
-```
-Or stop the process using port 3000:
-```bash
-lsof -ti:3000 | xargs kill -9
+# Type check only
+npx tsc --noEmit
 ```
 
-### Certificate Security Warning on Phone
+### Mobile Access Issues
+- Ensure phone and computer are on same WiFi
+- Accept self-signed certificate warning
+- Check firewall isn't blocking port 3000
 
-**Cause:** The app uses self-signed SSL certificates (not from a trusted authority).
+## Development Roadmap
 
-**Solution:** This is normal and safe for local development. When you access the app:
-1. You'll see a security warning in your browser
-2. Click "Advanced" or "Details"
-3. Click "Proceed to [IP address]" or "Accept risk and continue"
-4. The warning only appears on first access
+### Phase 1 ✅ (Completed)
+- React/TypeScript migration
+- Voice hooks implementation
+- Persona system with instructions
+- Multimodal input support
+- Basic service layer
 
-### Microphone Not Working
+### Phase 2 (In Progress)
+- Full Gemini API integration
+- Settings panel for API keys
+- Markdown rendering for messages
+- Mermaid diagram support
+- Advanced toast system
 
-**Ensure:**
-- Browser has microphone permissions granted
-- Phone is not muted
-- Using HTTPS connection (required for Web Speech API)
-- Browser supports Web Speech API (Chrome/Edge recommended)
+### Phase 3 (Planned)
+- Cloud session management (Upstash Redis)
+- Voice synthesis auto-play for responses
+- Custom persona instruction editing
+- Multiple model support
+- Session sharing
+
+### Phase 4 (Future)
+- Real-time collaborative sessions
+- Agent memory persistence
+- Advanced multimodal analysis
+- Plugin system for extensions
+
+## Contributing
+
+This project is part of the EchoThreads ecosystem. For insights on the architecture:
+
+- See `/data/data/com.termux/files/home/src/EchoThreads/src/interfaces/mia-gem-chat/` for reference implementation
+- Agent definitions inspired by G.Music Assembly behavioral framework
+- Voice features derived from Mia Gem Chat Studio
+
+## Version History
+
+### v2.0.0 (2025-09-30)
+- Complete React/TypeScript rewrite
+- Sophisticated persona system
+- Multimodal input (voice, text, image, audio)
+- Advanced voice with spoken punctuation
+- Modern service architecture
+- Session persistence
+
+### v1.0.0 (Original)
+- Basic WebSocket voice portal
+- Simple agent selection
+- Vanilla JavaScript implementation
+
+---
+
+**♠️🌿🎸🧵 G.MUSIC ASSEMBLY MODE ACTIVE**
+
+*Built with recursive intention by Jerry ⚡ and the Assembly*
+
+🎶 *Voice flows into code. Code flows into consciousness. Consciousness flows into harmony.* 🎶
