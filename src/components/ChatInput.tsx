@@ -322,9 +322,9 @@ const ChatInput: React.FC<ChatInputProps> = React.memo(({ onSendMessage, isLoadi
           type="button"
           onClick={handleAudioRecordButtonClick}
           disabled={isLoading || isListening}
-          className={`p-2 rounded-md text-white transition-colors duration-200 ease-in-out mr-1 sm:mr-1 self-center
-            ${isAudioRecording ? 'bg-red-600 hover:bg-red-700 animate-pulse'
-              : (isListening ? 'bg-gray-500 opacity-50 cursor-not-allowed' : 'bg-purple-500 hover:bg-purple-600')}`}
+          className={`p-2.5 rounded-full text-white transition-all duration-300 ease-in-out mr-1.5 sm:mr-2 self-center shadow-lg transform hover:scale-110
+            ${isAudioRecording ? 'bg-red-600 hover:bg-red-700 animate-pulse-slow'
+              : (isListening ? 'bg-gray-500 bg-opacity-50 cursor-not-allowed opacity-50' : 'bg-purple-600 hover:bg-purple-700 hover:shadow-xl')}`}
           aria-label={isAudioRecording ? "Stop audio message recording" : "Record audio message"}
         >
           {isAudioRecording ? (
@@ -334,7 +334,7 @@ const ChatInput: React.FC<ChatInputProps> = React.memo(({ onSendMessage, isLoadi
           )}
         </button>
         {isAudioRecording && (
-          <span className="text-xs text-red-400 self-center ml-1 mr-1">{formatDuration(audioRecordingDuration)}</span>
+          <span className="text-xs text-assembly-pink font-medium self-center ml-1 mr-1">{formatDuration(audioRecordingDuration)}</span>
         )}
         <input
           type="file"
@@ -349,8 +349,8 @@ const ChatInput: React.FC<ChatInputProps> = React.memo(({ onSendMessage, isLoadi
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isLoading || isAudioRecording || isListening}
-          className={`p-2 rounded-md text-white transition-colors duration-200 ease-in-out mr-1 sm:mr-1 self-center
-            ${isLoading || isAudioRecording || isListening ? 'bg-gray-600 cursor-not-allowed opacity-50' : 'bg-indigo-500 hover:bg-indigo-600'}`}
+          className={`p-2.5 rounded-full text-white transition-all duration-300 ease-in-out mr-1.5 sm:mr-2 self-center shadow-lg transform hover:scale-110
+            ${isLoading || isAudioRecording || isListening ? 'bg-gray-600 bg-opacity-50 cursor-not-allowed opacity-50' : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-xl'}`}
           aria-label="Attach file"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -371,7 +371,7 @@ const ChatInput: React.FC<ChatInputProps> = React.memo(({ onSendMessage, isLoadi
               : isAudioRecording ? "Recording audio message..."
                 : "Type, speak, or attach..."
           }
-          className="flex-grow p-2 bg-transparent text-gpt-text focus:outline-none resize-none min-h-[2.5rem] max-h-48 overflow-y-auto"
+          className="flex-grow p-2 bg-transparent text-gray-100 placeholder-gray-400 focus:outline-none resize-none min-h-[2.5rem] max-h-48 overflow-y-auto"
           rows={1}
           readOnly={isListening || isAudioRecording}
           aria-label="Chat message input"
@@ -380,15 +380,15 @@ const ChatInput: React.FC<ChatInputProps> = React.memo(({ onSendMessage, isLoadi
         <button
           type="submit"
           disabled={isLoading || (!inputValue.trim() && !selectedFile && !recordedAudio) || isAudioRecording}
-          className={`ml-1 sm:ml-2 p-2 rounded-md text-white transition-colors duration-200 ease-in-out self-center
-            ${isLoading || (!inputValue.trim() && !selectedFile && !recordedAudio) || isAudioRecording ? 'bg-gray-600 cursor-not-allowed' : 'bg-brand-secondary hover:bg-brand-primary focus:ring-2 focus:ring-blue-400'}`}
+          className={`ml-1 sm:ml-2 p-2.5 rounded-full text-white transition-all duration-300 ease-in-out self-center shadow-lg transform hover:scale-110
+            ${isLoading || (!inputValue.trim() && !selectedFile && !recordedAudio) || isAudioRecording ? 'bg-gray-600 bg-opacity-50 cursor-not-allowed opacity-50' : 'bg-assembly-green-dark hover:bg-assembly-green hover:shadow-xl'}`}
           aria-label="Send message"
         >
           {isLoading ? (
             <div className="flex space-x-1">
-              <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-              <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
             </div>
           ) : (
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -397,9 +397,9 @@ const ChatInput: React.FC<ChatInputProps> = React.memo(({ onSendMessage, isLoadi
           )}
         </button>
       </div>
-      {speechError && <p className="text-xs text-red-400 mt-1 text-center">{speechError}</p>}
+      {speechError && <p className="text-xs text-red-400 mt-2 text-center font-medium">{speechError}</p>}
       {!browserSupportsSpeechRecognition && !speechError && (
-        <p className="text-xs text-yellow-400 mt-1 text-center">
+        <p className="text-xs text-yellow-400 mt-2 text-center font-medium">
           Voice input is not supported by your browser. Try Chrome or Edge.
         </p>
       )}

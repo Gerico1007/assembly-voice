@@ -7,7 +7,7 @@ interface ChatWindowProps {
   isLoading: boolean;
   activePersonaAvatar: string;
   activePersonaName: string;
-  activePersonaColor: string;
+  activePersonaColor: string; // Keep for potential future use
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -15,7 +15,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   isLoading,
   activePersonaAvatar,
   activePersonaName,
-  activePersonaColor
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -28,24 +27,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [messages, isLoading]);
 
   return (
-    <div className="flex-grow overflow-y-auto p-4 space-y-2">
+    <div className="flex-grow overflow-y-auto px-4 py-6 space-y-2">
       {messages.map((msg) => (
         <ChatMessage key={msg.id} message={msg} />
       ))}
 
       {isLoading && (
-        <div className="flex justify-start mb-4">
+        <div className="flex justify-start mb-4 animate-slide-in">
           <div className="flex items-start">
             <img
               src={activePersonaAvatar}
               alt={activePersonaName}
-              className="w-8 h-8 rounded-full mr-2"
+              className="w-8 h-8 rounded-full mr-2 shadow-lg"
             />
-            <div className={`rounded-lg p-3 ${activePersonaColor} text-white shadow-md`}>
+            <div className="glass rounded-xl p-4 shadow-lg">
               <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <div className="w-2.5 h-2.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2.5 h-2.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2.5 h-2.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
               </div>
             </div>
           </div>

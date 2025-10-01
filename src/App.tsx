@@ -3,6 +3,7 @@ import ChatWindow from './components/ChatWindow';
 import ChatInput from './components/ChatInput';
 import PersonaSelectorBar from './components/PersonaSelectorBar';
 import ToastNotification from './components/ToastNotification';
+import SettingsModal from './components/SettingsModal';
 import { Message, Sender, AppSettings, ToastType } from './types';
 import { ALL_PERSONAS, getPersonaById, getEffectiveSystemInstruction } from './personas';
 import * as GeminiService from './services/GeminiService';
@@ -37,6 +38,7 @@ const sanitizeTextForSpeech = (markdown: string): string => {
 const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const { toasts, addToast, removeToast } = useToasts();
   const { speak: speakText } = useSpeechSynthesis();
 
@@ -249,16 +251,45 @@ const App: React.FC = () => {
     }
   }, [appSettings, messages, createSystemMessage, addToast, speakText]);
 
+  const handleSettingsChange = useCallback((newSettings: AppSettings) => {
+    setAppSettings(newSettings);
+
+    // Reinitialize chat with new model if changed
+    if (newSettings.selectedModel !== appSettings.selectedModel) {
+      const effectiveInstruction = getEffectiveSystemInstruction(
+        newSettings.activePersonaId,
+        newSettings.customPersonaInstructions || {}
+      );
+      GeminiService.reinitializeChatWithHistory(
+        newSettings.selectedModel,
+        effectiveInstruction,
+        messages.filter(msg => !(msg.sender === Sender.AI && msg.isError))
+      );
+      addToast(`Model changed to ${newSettings.selectedModel}`, ToastType.Info);
+    }
+
+    addToast("Settings saved successfully", ToastType.Info);
+  }, [appSettings, messages, addToast]);
+
   return (
     <div className="flex flex-col h-screen bg-gradient-main">
       {/* Header */}
-      <header className="glass rounded-2xl m-4 mb-0 p-4 z-20">
+      <header className="glass rounded-2xl m-4 mb-0 p-4 z-20 relative">
         <h1 className="text-3xl font-bold text-center text-white tracking-widest">
           ♠️🌿🎸🧵 G.Music Assembly
         </h1>
         <p className="text-sm text-center text-gray-300 mt-2 font-light">
           Voice-Enabled AI Portal v2.0
         </p>
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 rounded-full glass-strong hover:bg-white hover:bg-opacity-20 transition-all duration-300 group"
+          aria-label="Open settings"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6 text-gray-300 group-hover:text-white group-hover:rotate-90 transition-all duration-300">
+            <path fillRule="evenodd" d="M7.84 1.804A1 1 0 018.82 1h2.36a1 1 0 01.98.804l.331 1.652a6.993 6.993 0 011.929 1.115l1.598-.54a1 1 0 011.186.447l1.18 2.044a1 1 0 01-.205 1.251l-1.267 1.113a7.047 7.047 0 010 2.228l1.267 1.113a1 1 0 01.206 1.25l-1.18 2.045a1 1 0 01-1.187.447l-1.598-.54a6.993 6.993 0 01-1.929 1.115l-.33 1.652a1 1 0 01-.98.804H8.82a1 1 0 01-.98-.804l-.331-1.652a6.993 6.993 0 01-1.929-1.115l-1.598.54a1 1 0 01-1.186-.447l-1.18-2.044a1 1 0 01.205-1.251l1.267-1.114a7.05 7.05 0 010-2.227L1.821 7.773a1 1 0 01-.206-1.25l1.18-2.045a1 1 0 011.187-.447l1.598.54A6.993 6.993 0 017.51 3.456l.33-1.652zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+          </svg>
+        </button>
       </header>
 
       {/* Persona Selector */}
@@ -290,6 +321,14 @@ const App: React.FC = () => {
           <ToastNotification key={toast.id} toast={toast} onDismiss={removeToast} />
         ))}
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        appSettings={appSettings}
+        onSettingsChange={handleSettingsChange}
+      />
 
       <style>{`
         @keyframes toast-in {
