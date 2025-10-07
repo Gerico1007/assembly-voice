@@ -221,6 +221,44 @@ npx tsc --noEmit
 - Mermaid diagram support
 - Advanced toast system
 
+### MuseScore Integration (Preview)
+
+A forthcoming MuseScore 4.x QML plugin will bridge commands between the backend and the score editor.
+
+#### QML Plugin Outline (4.x / Qt6)
+- Type: `dialog` (4.x-compatible)
+- WebSocket client to `wss://<server>:3000` with token-based handshake
+- Handlers:
+  - `onTextMessageReceived`: parse JSON commands
+  - `onStatusChanged`: reconnect/backoff logic
+- Execution wrapper:
+  - `curScore.startCmd()` / perform actions / `curScore.endCmd()`
+  - Supported actions: add notes/chords, transpose, change time signatures, dynamics
+- State feedback:
+  - Serialize selection (e.g., `curScore.selection.elements`) and send JSON back
+- Constraints:
+  - Avoid `readScore()`/`writeScore()` in 4.x (use in-app edits)
+
+Backend endpoint (stub available now): `POST /musescore-command`
+```json
+{
+  "prompt": "Transpose selected up a fifth"
+}
+```
+Responds `not_implemented` until the plugin is installed and connected.
+
+#### Install & Usage (MuseScore 4.x)
+1. Locate MuseScore Plugins directory:
+   - Linux: `~/.local/share/MuseScore/MuseScore4/plugins/`
+   - Windows: `%LOCALAPPDATA%/MuseScore/MuseScore4/plugins/`
+   - macOS: `~/Library/Application Support/MuseScore/MuseScore4/plugins/`
+2. Create folder `AssemblyVoiceBridge` and copy contents of `musescore-plugin/` into it.
+3. Open MuseScore → Plugins → Plugin Manager → enable "Assembly Voice Bridge".
+4. In the plugin dialog, set WebSocket URL to your server (e.g., `wss://localhost:3000`).
+5. Click Connect, then use the app chat with `/ms <command>`.
+
+Security note: Self-signed HTTPS is used for local testing; accept the cert warning or install a trusted cert.
+
 ### Phase 3 (Planned)
 - Cloud session management (Upstash Redis)
 - Voice synthesis auto-play for responses

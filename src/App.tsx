@@ -7,6 +7,7 @@ import SettingsModal from './components/SettingsModal';
 import { Message, Sender, AppSettings, ToastType } from './types';
 import { ALL_PERSONAS, getPersonaById, getEffectiveSystemInstruction } from './personas';
 import * as GeminiService from './services/GeminiService';
+import * as MuseScoreService from './services/MuseScoreService';
 import { saveChatSession, loadChatSession, saveAppSettings, loadAppSettings } from './services/LocalStorageService';
 import useToasts from './hooks/useToasts';
 import useSpeechSynthesis from './hooks/useSpeechSynthesis';
@@ -164,6 +165,50 @@ const App: React.FC = () => {
       aiBubbleClassName: activePersona.color,
       isError: false,
     };
+
+    // Route /ms commands to MuseScore bridge
+    if (trimmedText.startsWith('/ms ')) {
+      const promptForMuseScore = trimmedText.slice(4).trim();
+      setMessages((prev) => [...prev, { ...placeholderAiMessage, text: 'Connecting to MuseScore…' }]);
+      try {
+        const resp = await MuseScoreService.sendCommand({ prompt: promptForMuseScore });
+        const statusText = resp.status === 'not_implemented'
+          ? 'MuseScore bridge not yet implemented. Received your command shape.'
+          : resp.status === 'ok'
+            ? 'Command executed successfully.'
+            : resp.message || 'Error processing MuseScore command.';
+
+        setMessages((prevMessages) => prevMessages.map((msg) =>
+          msg.id === aiMessagePlaceholderId
+            ? {
+                ...msg,
+                text: `🪄 MuseScore: ${statusText}`,
+                isError: resp.status === 'error',
+                aiBubbleClassName: resp.status === 'error' ? 'bg-red-700' : activePersona.color,
+              }
+            : msg
+        ));
+        if (resp.status === 'error') {
+          addToast(statusText, ToastType.Error);
+        } else if (resp.status === 'not_implemented') {
+          addToast('MuseScore bridge pending. Endpoint reachable.', ToastType.Info);
+        } else {
+          addToast('MuseScore command executed.', ToastType.Success);
+        }
+      } catch (err: any) {
+        const errMsg = err?.message || 'Failed to contact MuseScore endpoint';
+        setMessages((prevMessages) => prevMessages.map((msg) =>
+          msg.id === aiMessagePlaceholderId
+            ? { ...msg, text: errMsg, isError: true, aiBubbleClassName: 'bg-red-700' }
+            : msg
+        ));
+        addToast(errMsg, ToastType.Error);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     setMessages((prevMessages) => [...prevMessages, placeholderAiMessage]);
 
     const serviceImageData = imageData ? { base64ImageData: imageData.base64ImageData, imageMimeType: imageData.imageMimeType } : undefined;

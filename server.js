@@ -74,6 +74,33 @@ app.post('/api/query', async (req, res) => {
   });
 });
 
+// MuseScore command endpoint (stub)
+// Accepts either a natural language prompt or a structured command payload.
+// Returns 501 until the MuseScore QML plugin bridge is integrated.
+app.post('/musescore-command', async (req, res) => {
+  const { prompt, command, authToken } = req.body || {};
+
+  // Basic validation and future auth hook
+  if ((!prompt || typeof prompt !== 'string') && (!command || typeof command !== 'object')) {
+    return res.status(400).json({
+      error: 'Invalid request: provide either "prompt" (string) or "command" (object)'
+    });
+  }
+
+  // TODO: verify authToken once plugin-side handshake is implemented
+
+  // Echo back validated shape for now
+  return res.status(501).json({
+    status: 'not_implemented',
+    message: 'MuseScore bridge not yet implemented. This is a placeholder endpoint.',
+    received: {
+      hasPrompt: typeof prompt === 'string' && prompt.trim().length > 0,
+      hasCommand: !!command,
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Generate agent-specific response
 function generateAgentResponse(agent, query) {
   const response = {

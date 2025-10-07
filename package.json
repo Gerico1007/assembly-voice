@@ -2,7 +2,6 @@
   "name": "gmusic-voice-assembly",
   "version": "2.0.0",
   "description": "Voice-enabled React app for G.Music Assembly agent interaction",
-  
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
