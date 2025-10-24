@@ -48,6 +48,65 @@ app.get('/api/agents/:id', (req, res) => {
   }
 });
 
+// Save or update agent
+app.post('/api/agents/:id', (req, res) => {
+  try {
+    const agentId = req.params.id;
+    const agentData = req.body;
+
+    // Validate required fields
+    if (!agentData.name || !agentData.symbol || !agentData.role) {
+      return res.status(400).json({ error: 'Missing required fields: name, symbol, role' });
+    }
+
+    // Update in-memory agents
+    agents[agentId] = agentData;
+
+    // Save to file
+    const agentFilePath = path.join(agentsDir, `${agentId}.json`);
+    fs.writeFileSync(agentFilePath, JSON.stringify(agentData, null, 2));
+
+    console.log(`✅ Agent ${agentData.name} saved/updated`);
+    res.json({ success: true, agent: agentData });
+  } catch (error) {
+    console.error('Error saving agent:', error);
+    res.status(500).json({ error: 'Failed to save agent' });
+  }
+});
+
+// Delete agent
+app.delete('/api/agents/:id', (req, res) => {
+  try {
+    const agentId = req.params.id;
+
+    // Check if agent exists
+    if (!agents[agentId]) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    // Prevent deletion of core assembly agents
+    const coreAgents = ['jerry', 'nyro', 'aureon', 'jamai', 'synth'];
+    if (coreAgents.includes(agentId)) {
+      return res.status(403).json({ error: 'Cannot delete core assembly agent' });
+    }
+
+    // Remove from memory
+    delete agents[agentId];
+
+    // Delete file
+    const agentFilePath = path.join(agentsDir, `${agentId}.json`);
+    if (fs.existsSync(agentFilePath)) {
+      fs.unlinkSync(agentFilePath);
+    }
+
+    console.log(`🗑️  Agent ${agentId} deleted`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting agent:', error);
+    res.status(500).json({ error: 'Failed to delete agent' });
+  }
+});
+
 app.post('/api/query', async (req, res) => {
   const { query, activeAgents } = req.body;
 
