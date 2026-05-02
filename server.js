@@ -70,9 +70,21 @@ app.post('/api/messages/:id/listened', (req, res) => {
   res.json({ ok: true, message: msg });
 });
 
+app.post('/api/messages/listen-all', (req, res) => {
+  const data = readMessages();
+  let marked = 0;
+  data.messages.forEach((m) => {
+    if (!m.listened) {
+      m.listened = true;
+      marked += 1;
+    }
+  });
+  if (marked > 0) writeMessages(data);
+  res.json({ ok: true, marked });
+});
+
 app.use('/audio', express.static(AUDIO_DIR));
 app.use(express.static(path.join(ROOT, 'dist')));
-app.use('/legacy', express.static(path.join(ROOT, 'public')));
 
 let watchTimer = null;
 let lastBroadcastId = null;
