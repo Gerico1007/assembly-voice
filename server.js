@@ -1,166 +1,116 @@
+require('dotenv').config();
 const express = require('express');
 const https = require('https');
-const WebSocket = require('ws');
+const { Server } = require('socket.io');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 
+const ROOT = __dirname;
+const AUDIO_DIR = path.join(ROOT, 'audio');
+const MESSAGES_FILE = path.join(ROOT, 'messages.json');
+const SSL_DIR = path.join(ROOT, 'ssl');
+
+if (!fs.existsSync(AUDIO_DIR)) fs.mkdirSync(AUDIO_DIR, { recursive: true });
+if (!fs.existsSync(MESSAGES_FILE)) {
+  fs.writeFileSync(MESSAGES_FILE, JSON.stringify({ messages: [] }, null, 2) + '\n');
+}
+
 const app = express();
-
-// Load SSL certificates
 const sslOptions = {
-  key: fs.readFileSync(path.join(__dirname, 'ssl', 'server.key')),
-  cert: fs.readFileSync(path.join(__dirname, 'ssl', 'server.cert'))
+  key: fs.readFileSync(path.join(SSL_DIR, 'server.key')),
+  cert: fs.readFileSync(path.join(SSL_DIR, 'server.cert')),
 };
-
 const server = https.createServer(sslOptions, app);
-const wss = new WebSocket.Server({ server });
+const io = new Server(server, {
+  cors: { origin: '*', methods: ['GET', 'POST'] },
+});
 
-// Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
 
-// Load agent embodiments
 const agents = {};
-const agentsDir = path.join(__dirname, 'agents');
-fs.readdirSync(agentsDir).forEach(file => {
-  if (file.endsWith('.json')) {
-    const agentData = JSON.parse(fs.readFileSync(path.join(agentsDir, file), 'utf8'));
-    agents[agentData.id] = agentData;
-  }
-});
-
-console.log('♠️🌿🎸🧵 G.MUSIC ASSEMBLY MODE ACTIVE');
-console.log(`Loaded ${Object.keys(agents).length} agent embodiments:`, Object.keys(agents).join(', '));
-
-// API Routes
-app.get('/api/agents', (req, res) => {
-  res.json(agents);
-});
-
-app.get('/api/agents/:id', (req, res) => {
-  const agent = agents[req.params.id];
-  if (agent) {
-    res.json(agent);
-  } else {
-    res.status(404).json({ error: 'Agent not found' });
-  }
-});
-
-app.post('/api/query', async (req, res) => {
-  const { query, activeAgents } = req.body;
-
-  if (!query) {
-    return res.status(400).json({ error: 'Query is required' });
-  }
-
-  // Get agent responses
-  const responses = {};
-  const selectedAgents = activeAgents || Object.keys(agents);
-
-  selectedAgents.forEach(agentId => {
-    const agent = agents[agentId];
-    if (agent) {
-      // Generate agent-specific response
-      responses[agentId] = generateAgentResponse(agent, query);
+const agentsDir = path.join(ROOT, 'agents');
+if (fs.existsSync(agentsDir)) {
+  fs.readdirSync(agentsDir).forEach((file) => {
+    if (file.endsWith('.json')) {
+      const data = JSON.parse(fs.readFileSync(path.join(agentsDir, file), 'utf8'));
+      agents[data.id] = data;
     }
   });
-
-  res.json({
-    query,
-    timestamp: new Date().toISOString(),
-    responses
-  });
-});
-
-// Generate agent-specific response
-function generateAgentResponse(agent, query) {
-  const response = {
-    agent: agent.name,
-    symbol: agent.symbol,
-    role: agent.role,
-    response: `${agent.symbol} ${agent.name}: Analyzing "${query}" through ${agent.personality.focus}...`,
-    perspective: agent.personality.style,
-    timestamp: new Date().toISOString()
-  };
-
-  return response;
 }
 
-// WebSocket connection handling
-wss.on('connection', (ws) => {
-  console.log('🔗 New client connected');
+const readMessages = () => {
+  try {
+    return JSON.parse(fs.readFileSync(MESSAGES_FILE, 'utf8'));
+  } catch (e) {
+    return { messages: [] };
+  }
+};
+const writeMessages = (data) => {
+  fs.writeFileSync(MESSAGES_FILE, JSON.stringify(data, null, 2) + '\n');
+};
 
-  ws.send(JSON.stringify({
-    type: 'connection',
-    message: '♠️🌿🎸🧵 G.MUSIC ASSEMBLY MODE ACTIVE',
-    agents: Object.keys(agents)
-  }));
+app.get('/api/agents', (req, res) => res.json(agents));
 
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message);
-      console.log('📨 Received:', data);
+app.get('/api/messages', (req, res) => res.json(readMessages()));
 
-      if (data.type === 'voice_query') {
-        // Process voice query
-        const responses = {};
-        const selectedAgents = data.activeAgents || Object.keys(agents);
+app.get('/api/messages/unlistened', (req, res) => {
+  const data = readMessages();
+  const unlistened = data.messages.filter((m) => !m.listened);
+  res.json({ count: unlistened.length, messages: unlistened });
+});
 
-        selectedAgents.forEach(agentId => {
-          const agent = agents[agentId];
-          if (agent) {
-            responses[agentId] = generateAgentResponse(agent, data.query);
-          }
-        });
+app.post('/api/messages/:id/listened', (req, res) => {
+  const data = readMessages();
+  const msg = data.messages.find((m) => m.id === req.params.id);
+  if (!msg) return res.status(404).json({ error: 'Message not found' });
+  msg.listened = true;
+  writeMessages(data);
+  res.json({ ok: true, message: msg });
+});
 
-        ws.send(JSON.stringify({
-          type: 'agent_responses',
-          query: data.query,
-          responses,
-          timestamp: new Date().toISOString()
-        }));
-      }
-    } catch (error) {
-      console.error('Error processing message:', error);
-      ws.send(JSON.stringify({
-        type: 'error',
-        message: error.message
-      }));
+app.use('/audio', express.static(AUDIO_DIR));
+app.use(express.static(path.join(ROOT, 'dist')));
+app.use('/legacy', express.static(path.join(ROOT, 'public')));
+
+let watchTimer = null;
+let lastBroadcastId = null;
+fs.watch(MESSAGES_FILE, () => {
+  if (watchTimer) clearTimeout(watchTimer);
+  watchTimer = setTimeout(() => {
+    const data = readMessages();
+    const latest = data.messages[data.messages.length - 1];
+    if (latest && latest.id !== lastBroadcastId) {
+      lastBroadcastId = latest.id;
+      io.emit('new_message', latest);
+      console.log(`📨 broadcast new_message  persona=${latest.persona} lang=${latest.lang}`);
     }
-  });
+  }, 200);
+});
 
-  ws.on('close', () => {
-    console.log('👋 Client disconnected');
+io.on('connection', (socket) => {
+  console.log(`🔗 socket connected ${socket.id}`);
+  socket.emit('hello', {
+    agents: Object.keys(agents),
+    server_time: new Date().toISOString(),
+  });
+  socket.on('disconnect', (reason) => {
+    console.log(`👋 socket disconnected ${socket.id} (${reason})`);
   });
 });
 
-// Get local IP address
-function getLocalIP() {
-  const { networkInterfaces } = require('os');
-  const nets = networkInterfaces();
-
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      // Skip internal and non-IPv4 addresses
-      if (net.family === 'IPv4' && !net.internal) {
-        return net.address;
-      }
-    }
-  }
-  return 'localhost';
+const initial = readMessages();
+if (initial.messages.length > 0) {
+  lastBroadcastId = initial.messages[initial.messages.length - 1].id;
 }
 
-const PORT = process.env.PORT || 3000;
+console.log('♠️🌿🎸🧵 G.MUSIC ASSEMBLY VOICE PORTAL');
+console.log(`Loaded ${Object.keys(agents).length} personas: ${Object.keys(agents).join(', ')}`);
+console.log(`Existing messages: ${initial.messages.length}`);
+
+const PORT = process.env.PORT || 4444;
 server.listen(PORT, '0.0.0.0', () => {
-  const localIP = getLocalIP();
-  console.log('');
-  console.log('🌐 HTTPS Server running on:');
-  console.log(`   Local:   https://localhost:${PORT}`);
-  console.log(`   Network: https://${localIP}:${PORT}`);
-  console.log('');
-  console.log('📱 Access from your Android phone using the Network URL');
-  console.log('⚠️  Note: You\'ll need to accept the self-signed certificate warning');
-  console.log('');
+  console.log(`🌐 HTTPS https://0.0.0.0:${PORT}`);
+  console.log(`📱 Tailscale: https://eury.ferret-harmonic.ts.net:${PORT}`);
 });

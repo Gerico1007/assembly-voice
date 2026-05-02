@@ -2,7 +2,6 @@
   "name": "gmusic-voice-assembly",
   "version": "2.0.0",
   "description": "Voice-enabled React app for G.Music Assembly agent interaction",
-  
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -19,14 +18,16 @@
   "author": "Jerry ⚡",
   "license": "MIT",
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@types/markdown-it": "^14.1.2",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.18.2",
     "markdown-it": "^14.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "selfsigned": "^2.4.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "ws": "^8.14.2"
   },
   "devDependencies": {

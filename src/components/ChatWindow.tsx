@@ -1,57 +1,37 @@
-import React, { useEffect, useRef } from 'react';
-import { Message } from '../types';
+import React from 'react';
+import { VoiceMessage } from '../types';
 import ChatMessage from './ChatMessage';
 
 interface ChatWindowProps {
-  messages: Message[];
-  isLoading: boolean;
-  activePersonaAvatar: string;
-  activePersonaName: string;
-  activePersonaColor: string; // Keep for potential future use
+  messages: VoiceMessage[];
+  onListened: (id: string) => void;
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({
-  messages,
-  isLoading,
-  activePersonaAvatar,
-  activePersonaName,
-}) => {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+const ChatWindow: React.FC<ChatWindowProps> = ({ messages, onListened }) => {
+  const sorted = [...messages].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isLoading]);
-
-  return (
-    <div className="flex-grow overflow-y-auto px-4 py-6 space-y-2">
-      {messages.map((msg) => (
-        <ChatMessage key={msg.id} message={msg} />
-      ))}
-
-      {isLoading && (
-        <div className="flex justify-start mb-4 animate-slide-in">
-          <div className="flex items-start">
-            <img
-              src={activePersonaAvatar}
-              alt={activePersonaName}
-              className="w-8 h-8 rounded-full mr-2 shadow-lg"
-            />
-            <div className="glass rounded-xl p-4 shadow-lg">
-              <div className="flex space-x-2">
-                <div className="w-2.5 h-2.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2.5 h-2.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2.5 h-2.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
-            </div>
+  if (sorted.length === 0) {
+    return (
+      <div className="flex-grow flex items-center justify-center px-4">
+        <div className="text-center glass rounded-xl p-8 max-w-md">
+          <div className="text-5xl mb-4">♠️🌿🎸🧵</div>
+          <div className="text-lg text-white">The Assembly is silent.</div>
+          <div className="text-sm mt-2 text-gray-400">
+            Generate a voice message via{' '}
+            <code className="text-yellow-300">scripts/tts-generate.py</code>
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      <div ref={messagesEndRef} />
+  return (
+    <div className="flex-grow overflow-y-auto px-4 py-6 space-y-3">
+      {sorted.map((msg) => (
+        <ChatMessage key={msg.id} message={msg} onListened={onListened} />
+      ))}
     </div>
   );
 };

@@ -15,34 +15,14 @@ export interface Persona {
   };
 }
 
-export enum Sender {
-  User = 'user',
-  AI = 'ai',
-}
-
-export interface Message {
+export interface VoiceMessage {
   id: string;
-  sender: Sender;
+  timestamp: string;
   text: string;
-  timestamp: Date;
-  avatar: string;
-  name: string;
-  aiBubbleClassName?: string;
-  isError?: boolean;
-  imagePreviewUrl?: string;
-  base64ImageData?: string;
-  imageMimeType?: string;
-  fileName?: string;
-  audioDataUrl?: string;
-  audioMimeType?: string;
-}
-
-export interface AppSettings {
-  activePersonaId: string;
-  selectedModel: string;
-  customPersonaInstructions?: { [id: string]: string };
-  autoPlayTTS: boolean;
-  currentCloudSessionId?: string;
+  lang: 'fr' | 'en';
+  persona: string;
+  audio_file: string;
+  listened: boolean;
 }
 
 export enum ToastType {
