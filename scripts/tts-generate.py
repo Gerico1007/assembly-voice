@@ -92,6 +92,7 @@ def main() -> int:
         "lang": lang,
         "persona": persona,
         "audio_file": f"audio/{fname}",
+        "pwd": os.getcwd(),
         "listened": False,
     }
     manifest["messages"].append(entry)

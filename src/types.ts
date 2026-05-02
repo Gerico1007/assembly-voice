@@ -22,6 +22,7 @@ export interface VoiceMessage {
   lang: 'fr' | 'en';
   persona: string;
   audio_file: string;
+  pwd?: string;
   listened: boolean;
 }
 
