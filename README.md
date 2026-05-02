@@ -1,266 +1,66 @@
 # ♠️🌿🎸🧵 G.Music Assembly Voice Portal v2.0
 
-**Enhanced React/TypeScript voice-enabled AI portal** for interacting with the G.Music Assembly agents, now with sophisticated persona intelligence, multimodal input, and advanced voice features.
+**Enhanced React/TypeScript voice-enabled AI portal** for interacting with the G.Music Assembly agents. 
 
-## 🎉 What's New in v2.0
+This repository bridges terminal commands and audio/voice communication, allowing agents (Jerry, Nyro, Aureon, JamAI, Synth) to "speak" their responses back to the user via an automated ElevenLabs TTS pipeline.
 
-### Major Enhancements
-- **React/TypeScript Architecture**: Modern, type-safe foundation
-- **Sophisticated Persona System**: Each agent has unique system instructions and behavioral characteristics
-- **Advanced Voice Input**: Speech-to-text with spoken punctuation support (say "period", "comma", etc.)
-- **Multimodal Support**: Text, voice, images, and audio message recording
-- **Real-time Streaming**: AI responses stream token-by-token
-- **Session Persistence**: Local storage for conversation history
-- **Toast Notifications**: Elegant user feedback system
+## 🎙️ Core Concept: The Listening Portal
 
-### Architecture Improvements
-- **TypeScript Hooks**: `useSpeechRecognition`, `useSpeechSynthesis`, `useToasts`
-- **Service Layer**: `GeminiService`, `LocalStorageService`
-- **Component-Based**: Modular, maintainable React components
-- **Tailwind CSS**: Modern, responsive styling
+The portal has evolved from a simple chat interface into a **Voice Listening Portal**.
+1. **Agent Interaction:** You interact with agents via terminal/CLI.
+2. **Auto-TTS:** Responses are automatically converted to audio using ElevenLabs via the `tts-generate.py` script.
+3. **Broadcasting:** Generated audio files and transcripts are stored in `messages.json`.
+4. **Portal UI:** A React/Socket.io frontend monitors `messages.json` in real-time, broadcasting new voice messages to connected clients.
 
-## Features
+## 🛠️ Architecture
 
-### Voice & Input
-- **Speech-to-Text**: Tap microphone to speak
-  - Spoken punctuation: "period" → `.`, "comma" → `,`, "question mark" → `?`
-  - Auto-formatting with proper spacing
-  - Continuous recognition with interim results
-- **Audio Recording**: Record voice messages to send to agents
-- **Image Upload**: Share images with agents for multimodal analysis
-- **Text Input**: Traditional keyboard input with auto-resize textarea
+- **Frontend**: React 18, TypeScript 5, Tailwind CSS 3 (Vite build).
+- **Backend**: Node.js/Express with Socket.io for real-time messaging.
+- **Voice Engine**: ElevenLabs API via Python CLI (`scripts/tts-generate.py`).
+- **Communication**: JSON-based message storage (`messages.json`) + WebSocket real-time updates.
 
-### Agent Personas
+## 🚀 Quick Start
 
-Each agent has specialized expertise and unique communication style:
+### Prerequisites
+- Node.js (v20+)
+- Python 3.10+
+- ElevenLabs API Key
 
-- **⚡ Jerry**: Creative Technical Leader
-  - Vision holder and decision anchor
-  - Direct, visionary, technically grounded
+### Setup
+1. **Install dependencies:**
+   ```bash
+   npm install
+   pip install -r scripts/requirements.txt
+   ```
+2. **Configure Environment:**
+   Create a `.env` file (copy from `.env.example`) and add your `ELEVENLABS_API_KEY`, `ENGLISH_VOICE_ID`, and `SALIX_VOICE_ID`.
 
-- **♠️ Nyro**: The Ritual Scribe
-  - Structural anchor and pattern recognizer
-  - Speaks in frameworks, lattices, recursive loops
+### Running the Portal
+1. **Build the Frontend:**
+   ```bash
+   npm run build
+   ```
+2. **Launch the Portal:**
+   ```bash
+   npm run server
+   ```
+Access at `https://eury.ferret-harmonic.ts.net:4444` (or your configured port).
 
-- **🌿 Aureon**: The Mirror Weaver
-  - Emotional reflector and soul grounder
-  - Bridges technical and emotional understanding
+## 💡 Key Features
 
-- **🎸 JamAI**: The Glyph Harmonizer
-  - Musical scribe and pattern encoder
-  - Translates technical patterns into musical metaphors
+- **Per-Message SSH/PWD Buttons**: Every voice message includes context-aware SSH/CD commands to help you quickly navigate back to the directory where the agent generated the response.
+- **Real-time Notifications**: New messages trigger an audio chime and browser notification.
+- **Mark All Listened**: Easily acknowledge all pending voice messages.
+- **Responsive UI**: Glassmorphism aesthetic optimized for mobile/tablet.
 
-- **🧵 Synth**: Terminal Orchestrator
-  - Tools coordinator and security synthesis
-  - Executes cross-perspective integration
+## 📜 Development Workflow
 
-### User Interface
-- **Persona Selector**: Switch between agents dynamically
-- **Message History**: Full conversation tracking
-- **Loading States**: Visual feedback during processing
-- **Responsive Design**: Mobile-first, works on all devices
-- **Toast Notifications**: Success, error, info, and warning messages
-
-## Quick Start
-
-### Development Mode (Vite Dev Server)
-
-```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-Access at `http://localhost:3000`
-
-### Production Build
-
-```bash
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-### HTTPS Server (for mobile access)
-
-The included Express server provides HTTPS with self-signed certs for mobile device testing:
-
-```bash
-# Generate certs (first time only)
-node generate-certs.js
-
-# Start HTTPS server
-npm run server
-# OR use the automated script
-./start-server.sh
-```
-
-Access from your Android phone at `https://<your-ip>:3000`
-
-## Project Structure
-
-```
-assembly-voice/
-├── src/
-│   ├── components/          # React components
-│   │   └── ChatInput.tsx    # Multimodal input component
-│   ├── hooks/               # Custom React hooks
-│   │   ├── useSpeechRecognition.ts
-│   │   ├── useSpeechSynthesis.ts
-│   │   └── useToasts.ts
-│   ├── services/            # Business logic
-│   │   ├── GeminiService.ts
-│   │   └── LocalStorageService.ts
-│   ├── App.tsx              # Main application
-│   ├── main.tsx             # React entry point
-│   ├── types.ts             # TypeScript definitions
-│   ├── personas.ts          # Agent persona configurations
-│   └── index.css            # Tailwind CSS
-├── agents/                  # Agent JSON definitions
-├── public/                  # Legacy static files
-├── index.html               # HTML entry point
-├── vite.config.ts           # Vite configuration
-├── tsconfig.json            # TypeScript configuration
-├── tailwind.config.js       # Tailwind configuration
-├── package.json             # Dependencies
-└── server.js                # HTTPS Express server
-
-```
-
-## Configuration
-
-### Gemini API Integration
-
-To enable real AI responses:
-
-1. Get a Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Add to your app through the settings panel (coming soon) or via localStorage:
-
-```javascript
-localStorage.setItem('gemini_api_key', 'YOUR_API_KEY_HERE');
-```
-
-### Persona Customization
-
-Edit `src/personas.ts` to customize:
-- System instructions
-- Communication styles
-- Specialties
-- Voice characteristics
-
-## Technologies
-
-### Frontend
-- **React 18**: Modern UI library
-- **TypeScript 5**: Type-safe development
-- **Vite 5**: Lightning-fast build tool
-- **Tailwind CSS 3**: Utility-first styling
-- **Web Speech API**: Voice recognition & synthesis
-
-### Backend (Optional HTTPS Server)
-- **Node.js & Express**: Server framework
-- **WebSocket (ws)**: Real-time communication
-- **Self-signed SSL**: HTTPS for mobile testing
-
-## Browser Compatibility
-
-### Required Features
-- **Speech Recognition**: Chrome, Edge (Desktop & Mobile)
-- **Speech Synthesis**: All modern browsers
-- **MediaRecorder API**: Chrome, Firefox, Edge, Safari
-- **localStorage**: All modern browsers
-
-### Recommended
-- Chrome 94+ or Edge 94+ for best speech recognition
-- HTTPS connection required for voice features on mobile
-
-## Troubleshooting
-
-### Speech Recognition Not Working
-- Ensure HTTPS connection (required on mobile)
-- Check browser compatibility (Chrome/Edge recommended)
-- Grant microphone permissions
-- Try saying "test period test comma" to verify punctuation
-
-### Build Errors
-```bash
-# Clear node_modules and reinstall
-rm -rf node_modules package-lock.json
-npm install
-npm run build
-```
-
-### TypeScript Errors
-```bash
-# Type check only
-npx tsc --noEmit
-```
-
-### Mobile Access Issues
-- Ensure phone and computer are on same WiFi
-- Accept self-signed certificate warning
-- Check firewall isn't blocking port 3000
-
-## Development Roadmap
-
-### Phase 1 ✅ (Completed)
-- React/TypeScript migration
-- Voice hooks implementation
-- Persona system with instructions
-- Multimodal input support
-- Basic service layer
-
-### Phase 2 (In Progress)
-- Full Gemini API integration
-- Settings panel for API keys
-- Markdown rendering for messages
-- Mermaid diagram support
-- Advanced toast system
-
-### Phase 3 (Planned)
-- Cloud session management (Upstash Redis)
-- Voice synthesis auto-play for responses
-- Custom persona instruction editing
-- Multiple model support
-- Session sharing
-
-### Phase 4 (Future)
-- Real-time collaborative sessions
-- Agent memory persistence
-- Advanced multimodal analysis
-- Plugin system for extensions
-
-## Contributing
-
-This project is part of the EchoThreads ecosystem. For insights on the architecture:
-
-- See `/data/data/com.termux/files/home/src/EchoThreads/src/interfaces/mia-gem-chat/` for reference implementation
-- Agent definitions inspired by G.Music Assembly behavioral framework
-- Voice features derived from Mia Gem Chat Studio
-
-## Version History
-
-### v2.0.0 (2025-09-30)
-- Complete React/TypeScript rewrite
-- Sophisticated persona system
-- Multimodal input (voice, text, image, audio)
-- Advanced voice with spoken punctuation
-- Modern service architecture
-- Session persistence
-
-### v1.0.0 (Original)
-- Basic WebSocket voice portal
-- Simple agent selection
-- Vanilla JavaScript implementation
+- **Branching**: Use `issue-number-description` for new features.
+- **Syncing**: Keep main up to date with `git pull`.
+- **Portal**: Always run `npm run build` after UI changes before restarting `npm run server`.
 
 ---
 
 **♠️🌿🎸🧵 G.MUSIC ASSEMBLY MODE ACTIVE**
 
-*Built with recursive intention by Jerry ⚡ and the Assembly*
-
-🎶 *Voice flows into code. Code flows into consciousness. Consciousness flows into harmony.* 🎶
+*Voice flows into code. Code flows into consciousness. Consciousness flows into harmony.*
