@@ -14,3 +14,13 @@
   - `--text`: The exact text of your response (concise versions are preferred for long outputs).
   - `--lang`: Set to `en` for English or `fr` for French, matching the response language.
 
+
+## Voice Personas (Edge-TTS)
+The `tts-generate.py` script maps agents to the following neural voices:
+- **aureon**: `fr-FR-DeniseNeural` (Female, French)
+- **salix**: `fr-FR-HenriNeural` (Male, French)
+- **nyro**: `en-US-AriaNeural` (Female, English)
+- **jamai**: `en-US-AndrewNeural` (Male, English)
+- **synth**: `en-US-GuyNeural` (Male, English)
+
+When using `tts-generate.py`, you can specify `--persona [name]` to use the correct voice automatically.
