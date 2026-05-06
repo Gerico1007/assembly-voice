@@ -46,7 +46,7 @@ When skipping, no audio URL is needed.
 
 ### Cost awareness
 
-Each TTS call hits the ElevenLabs API. Keep `--text` concise — speak the
+Each TTS call uses Edge-TTS (local neural voices). Keep `--text` concise — speak the
 takeaway, not the whole transcript. If the response is mostly code, TTS only
 the human-language summary.
 
