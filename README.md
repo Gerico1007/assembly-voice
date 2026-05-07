@@ -32,7 +32,7 @@ The portal has evolved from a simple chat interface into a **Voice Listening Por
    pip install -r scripts/requirements.txt
    ```
 2. **Configure Environment:**
-   Create a `.env` file (copy from `.env.example`) and No API key required.
+   Create a `.env` file (copy from `.env.example`) . No API key is required for TTS (Edge-TTS).
 
 ### Running the Portal
 1. **Build the Frontend:**
