@@ -17,6 +17,7 @@ from pathlib import Path
 import edge_tts
 
 ROOT = Path(__file__).resolve().parent.parent
+PUBLIC_AUDIO_BASE = "https://gmusicassembly.com/Assembly/voice/audio"
 AUDIO_DIR = ROOT / "audio"
 MESSAGES_FILE = ROOT / "messages.json"
 
@@ -93,6 +94,7 @@ async def amain() -> int:
     print(f"OK  id={entry['id']}")
     print(f"    persona={persona}  lang={lang}  voice={voice}")
     print(f"    audio={out_path}  bytes={size}")
+    print(f"    public_url={PUBLIC_AUDIO_BASE}/{fname}")
     return 0
 
 if __name__ == "__main__":
