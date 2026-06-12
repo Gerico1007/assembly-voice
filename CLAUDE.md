@@ -3,10 +3,10 @@
 ## Session Context (echo at the top of substantive responses)
 
 - **Session Name:** `assembly-voice`
-- **Environment:** `gmusic@eury.ferret-harmonic.ts.net` (PWD: `/home/gmusic/workspace/assembly-voice`)
+- **Environment:** `gmusic@eury.ferret-harmonic.ts.net` (PWD: `/home/gmusic/salix/repos/assembly-voice`)
 - **SSH Route:** `ssh gmusic@eury.ferret-harmonic.ts.net`
-- **SSH Interactive:** `ssh -t gmusic@eury.ferret-harmonic.ts.net "cd /home/gmusic/workspace/assembly-voice && exec bash"`
-- **Listening Portal:** `https://eury.ferret-harmonic.ts.net:4444/`
+- **SSH Interactive:** `ssh -t gmusic@eury.ferret-harmonic.ts.net "cd /home/gmusic/salix/repos/assembly-voice && exec bash"`
+- **Listening Portal:** `https://gmusicassembly.com/Assembly/voice/`
 
 ## Mandatory TTS Generation
 
@@ -24,17 +24,18 @@ python3 scripts/tts-generate.py --text "<concise version of response>" --lang <e
 After generation, include in the response:
 
 ```
-🔊 https://eury.ferret-harmonic.ts.net:4444/audio/<filename-from-script-output>
+🔊 https://gmusicassembly.com/Assembly/voice/audio/<filename-from-script-output>
 ```
 
-The filename is in the script's `audio=...` line — copy the basename (e.g. `20260502_173947_fr.mp3`).
+The filename is in the script's `audio=...` or `public_url=...` line — copy the basename (e.g. `20260502_173947_fr.mp3`).
 
 ### Parameters
 
 - `--text`: A **concise spoken version** of the response. For long outputs, summarize to ~1–3 sentences.
   Avoid Markdown, emoji, code blocks — those don't speak well.
 - `--lang`: `fr` if the user wrote in French, `en` if in English. When mixed, follow the dominant language.
-- `--persona` (optional): override default mapping (`fr → aureon`, `en → nyro`). Use when a specific Assembly voice is more fitting (e.g. `--persona synth` for execution/orchestration messages).
+- `--persona` (optional): override default mapping (`fr → aureon`, `en → nyro`).
+- **Voice safety rule:** In `tts-generate.py`, persona selection controls the actual voice. For French audio, default to French-speaking personas (`aureon` or `salix`). Only use English-speaking personas (`nyro`, `jamai`, `synth`) when the user explicitly wants that agent's configured voice identity preserved.
 
 ### When to skip TTS
 
