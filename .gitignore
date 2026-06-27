@@ -27,6 +27,10 @@ Thumbs.db
 *.tmp
 .cache/
 
+# Python caches
+__pycache__/
+*.py[cod]
+
 # Runtime artifacts (TTS portal)
 audio/
 messages.json

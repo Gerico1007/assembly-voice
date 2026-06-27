@@ -51,6 +51,45 @@ Access at `https://gmusicassembly.com/Assembly/voice/` in production (or your co
 - **Real-time Notifications**: New messages trigger an audio chime and browser notification.
 - **Mark All Listened**: Easily acknowledge all pending voice messages.
 - **Responsive UI**: Glassmorphism aesthetic optimized for mobile/tablet.
+- **Optional Event Publish**: Each generated voice message can optionally be broadcast to Redis Streams and Google Cloud Pub/Sub as a lightweight `assembly.voice.ready` event.
+
+## 📡 Event Bus Hooks
+
+By default, `scripts/tts-generate.py` generates audio and updates the local portal only.
+
+If you opt in with publish flags, it can also publish a small event with the audio URL and metadata to:
+
+- Redis stream: `assembly:voice:events`
+- Google Cloud Pub/Sub topic: `assembly-voice-events`
+
+Useful listener commands:
+
+```bash
+python3 scripts/redis-subscribe-voice.py --last-id 0
+```
+
+```bash
+./scripts/pubsub-pull-voice.sh assembly-voice-events-sub
+```
+
+Environment notes:
+
+- Redis connection is loaded from repo-local `.env` first, with `~/.env` as fallback context.
+- Pub/Sub requires a working `gcloud` login in the current shell.
+
+Useful publish examples:
+
+```bash
+python3 scripts/tts-generate.py --text "Local portal only" --lang en
+```
+
+```bash
+python3 scripts/tts-generate.py --text "Send to Redis too" --lang en --publish-redis
+```
+
+```bash
+python3 scripts/tts-generate.py --text "Send everywhere" --lang en --publish-all
+```
 
 ## 📜 Development Workflow
 
