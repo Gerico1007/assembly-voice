@@ -43,7 +43,7 @@ The portal has evolved from a simple chat interface into a **Voice Listening Por
    ```bash
    npm run server
    ```
-Access at `https://eury.ferret-harmonic.ts.net:4444` (or your configured port).
+Access at `https://gmusicassembly.com/Assembly/voice/` in production (or your configured local/dev port while testing).
 
 ## 💡 Key Features
 
@@ -57,6 +57,15 @@ Access at `https://eury.ferret-harmonic.ts.net:4444` (or your configured port).
 - **Branching**: Use `issue-number-description` for new features.
 - **Syncing**: Keep main up to date with `git pull`.
 - **Portal**: Always run `npm run build` after UI changes before restarting `npm run server`.
+
+## 🤖 Agent CLI Migration Notes
+
+This repo is being kept compatible with both the legacy Gemini CLI and Antigravity CLI during the migration window.
+
+- `GEMINI.md` remains in place for backward compatibility.
+- `AGENTS.md` is now present as the Antigravity-oriented project instruction file.
+- Until authenticated `agy` sessions are verified end-to-end, keep the key operational rules mirrored in both files.
+- No local `.gemini/skills/` tree existed here, so there was nothing repo-local to rename into `.agents/skills/`.
 
 ---
 
