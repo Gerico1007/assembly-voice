@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { VoiceMessage, ToastType } from '../types';
 import useToasts from '../hooks/useToasts';
+import { withRuntimeBasePath } from '../runtimePaths';
 
 interface ChatMessageProps {
   message: VoiceMessage;
@@ -43,7 +44,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onListened }) => {
 
   const copySSH = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const pwd = message.pwd || '/home/gmusic/workspace/assembly-voice';
+    const pwd = message.pwd || '/home/gmusic/salix/repos/assembly-voice';
     const command = `ssh -t gmusic@eury.ferret-harmonic.ts.net "cd ${pwd} && exec bash"`;
     navigator.clipboard.writeText(command);
     addToast('SSH command copied to clipboard', ToastType.Success, 2000);
@@ -51,7 +52,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onListened }) => {
 
   const copyPWD = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const pwd = message.pwd || '/home/gmusic/workspace/assembly-voice';
+    const pwd = message.pwd || '/home/gmusic/salix/repos/assembly-voice';
     const command = `cd ${pwd}`;
     navigator.clipboard.writeText(command);
     addToast('CD command copied to clipboard', ToastType.Success, 2000);
@@ -103,7 +104,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onListened }) => {
         </div>
 
         <audio
-          src={`/${message.audio_file}`}
+          src={withRuntimeBasePath(message.audio_file)}
           controls
           preload="none"
           onPlay={handlePlay}

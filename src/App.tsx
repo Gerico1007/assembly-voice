@@ -4,6 +4,7 @@ import ChatWindow from './components/ChatWindow';
 import ToastNotification from './components/ToastNotification';
 import { VoiceMessage, ToastType } from './types';
 import useToasts from './hooks/useToasts';
+import { withRuntimeBasePath } from './runtimePaths';
 
 const App: React.FC = () => {
   const [messages, setMessages] = useState<VoiceMessage[]>([]);
@@ -12,14 +13,14 @@ const App: React.FC = () => {
   const chimeRef = useRef<HTMLAudioElement | null>(null);
 
   if (!chimeRef.current && typeof Audio !== 'undefined') {
-    chimeRef.current = new Audio('/notification.mp3');
+    chimeRef.current = new Audio(withRuntimeBasePath('notification.mp3'));
     chimeRef.current.preload = 'auto';
     chimeRef.current.volume = 0.6;
   }
 
   const fetchMessages = useCallback(async () => {
     try {
-      const res = await fetch('/api/messages');
+      const res = await fetch(withRuntimeBasePath('api/messages'));
       const data = await res.json();
       setMessages(data.messages || []);
     } catch {
@@ -31,6 +32,7 @@ const App: React.FC = () => {
     fetchMessages();
 
     const socket: Socket = io({
+      path: withRuntimeBasePath('socket.io/'),
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
@@ -70,7 +72,7 @@ const App: React.FC = () => {
 
   const markListened = useCallback(async (id: string) => {
     try {
-      await fetch(`/api/messages/${id}/listened`, { method: 'POST' });
+      await fetch(withRuntimeBasePath(`api/messages/${id}/listened`), { method: 'POST' });
       setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, listened: true } : m)));
     } catch {
       // silent
@@ -79,7 +81,7 @@ const App: React.FC = () => {
 
   const markAllListened = useCallback(async () => {
     try {
-      const res = await fetch('/api/messages/listen-all', { method: 'POST' });
+      const res = await fetch(withRuntimeBasePath('api/messages/listen-all'), { method: 'POST' });
       const data = await res.json();
       setMessages((prev) => prev.map((m) => ({ ...m, listened: true })));
       addToast(`Marked ${data.marked} as listened`, ToastType.Success, 2000);
@@ -123,7 +125,7 @@ const App: React.FC = () => {
       <ChatWindow messages={messages} onListened={markListened} />
 
       <footer className="text-center text-[10px] text-gray-500 py-2 px-4 opacity-70">
-        eury.ferret-harmonic.ts.net:4444 · ♠️🌿🎸🧵 G.Music Assembly
+        gmusicassembly.com/Assembly/voice · ♠️🌿🎸🧵 G.Music Assembly
       </footer>
 
       <div className="fixed top-4 right-4 z-50 space-y-2">
