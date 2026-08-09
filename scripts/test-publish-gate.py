@@ -104,7 +104,7 @@ def make_body(origin, text: str = STATIC_TEXT, audio_file: str = STATIC_AUDIO) -
 OMIT = object()  # distinguishes "origin: null" from "no origin key at all"
 
 # Markers from ORIGIN_CONTRACT_HELP in
-# /usr/local/src/mightyeagle/packages/voice/src/origin.ts (~line 314).
+# @miadi/voice, src/origin.ts (ORIGIN_CONTRACT_HELP).
 HELP_MARKERS = (
     "origin must declare where you are and how to be answered",
     "DO NOT COMPOSE THESE VALUES",
@@ -223,6 +223,11 @@ class Harness:
         if not nm.exists():
             nm.symlink_to(REPO / "node_modules")
         self.audio.mkdir(exist_ok=True)          # empty: orphans become countable
+        # The gate now requires audio_file to EXIST and be non-empty. Without
+        # this, every negative case below would be refused for a missing file
+        # rather than for the thing it is testing — a whole lane green while
+        # asserting nothing. Rendering it keeps the refusals honest.
+        (self.audio / os.path.basename(STATIC_AUDIO)).write_bytes(b"\x00" * 64)
         shutil.copy2(REAL_MANIFEST, self.manifest)  # a copy, never the original
 
     @staticmethod
@@ -581,6 +586,20 @@ def main() -> int:
             status, raw = publish(h, {**hb, f: payload})
             if not is_refusal(status):
                 leaked.append(f"{f}={status}")
+                continue
+            # "refused" is not enough. A refusal for an unrelated reason — a
+            # missing audio file, a bad envelope — would keep this whole lane
+            # green with the sanitizer deleted. Insist it is the ORIGIN
+            # refusal, and that it names the field we poisoned.
+            try:
+                body = json.loads(raw)
+            except Exception:
+                leaked.append(f"{f}=unparseable")
+                continue
+            if body.get("error") != "origin_required":
+                leaked.append(f"{f}!origin({body.get('error')})")
+            elif not any(f"origin.{f}" in prob for prob in body.get("problems", [])):
+                leaked.append(f"{f}!named")
         if h.manifest_sha() != sha_before:
             changed = True
         if h.audio_set() - audio_before:

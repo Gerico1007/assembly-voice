@@ -61,7 +61,7 @@
     },
     "origin": {
       "type": "object",
-      "description": "Return address declared by the publisher, with serverHost/reach/attested stamped by the server. Added 2026-07-29 so a listener can answer the agent that published a message instead of guessing from global config. Permitted by this schema's own additionalProperties:true; documented here so it stops being invisible. NOT in the top-level `required` list, and deliberately so: since 2026-08-04 every publish path REFUSES a record without one (see checkOriginInput in src/origin.ts), but ~100 records predate that rule and must keep validating and rendering. Required on write, optional on read — the asymmetry is the point, not an oversight.",
+      "description": "Return address declared by the publisher, with serverHost/reach/attested stamped by the server. Added 2026-07-29 so a listener can answer the agent that published a message instead of guessing from global config. Permitted by this schema's own additionalProperties:true; documented here so it stops being invisible. NOT in the top-level `required` list, and deliberately so: since 2026-08-04 every publish path REFUSES a record without one (see checkOriginInput in src/origin.ts), but ~100 records predate that rule and must keep validating and rendering. Required on write, optional on read \u2014 the asymmetry is the point, not an oversight.",
       "required": [
         "schemaVersion",
         "user",
@@ -131,10 +131,11 @@
           "enum": [
             "steerable",
             "other-host",
+            "other-user",
             "not-multiplexed",
             "unknown"
           ],
-          "description": "The server's verdict on answerability, not the publisher's claim."
+          "description": "The server's verdict on answerability, not the publisher's claim. NOTE (assembly-voice, 2026-08-08): \"other-user\" added here because origin.ts computes it \u2014 same host, different multiplexer owner \u2014 while this enum omitted it, so a record from another local user could not validate against the shape this repo vendors as canonical. That is precisely the multi-agent case the field exists for."
         },
         "attested": {
           "type": "string",

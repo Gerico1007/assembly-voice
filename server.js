@@ -109,6 +109,24 @@ app.post('/api/voice/publish', express.json({ limit: '256kb' }), (req, res) => {
     });
   }
 
+  // Loopback alone is a confused deputy. `app.use(cors())` above is allow-all,
+  // so a web page open in a browser ON THIS HOST can POST here and the peer
+  // address is 127.0.0.1 — the page borrows the machine's trust. A real
+  // publisher is a script; browsers attach Origin to every cross-origin POST
+  // and Referer when navigating from a page. Neither belongs on this route.
+  if (req.headers.origin || req.headers.referer) {
+    console.warn(
+      `[voice] publish refused: browser-initiated (origin=${req.headers.origin || '-'})`
+    );
+    return res.status(403).json({
+      error: 'not_a_publisher',
+      message:
+        'publishing is for a process on this host, not a page in a browser. ' +
+        'A request carrying Origin or Referer is a web page borrowing the ' +
+        'machine\'s trust, which is not the same thing as being trusted.',
+    });
+  }
+
   const problems = gate.checkOriginInput(body.origin);
   if (problems.length) {
     console.warn(`[voice] publish refused: ${problems.join(' · ')}`);
