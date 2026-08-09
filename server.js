@@ -96,6 +96,19 @@ const gate = require('./lib/origin-gate');
 app.post('/api/voice/publish', express.json({ limit: '256kb' }), (req, res) => {
   const body = req.body || {};
 
+  // This server binds 0.0.0.0 and has no authentication, so an unauthenticated
+  // WRITE endpoint on it would let anyone who can reach the port put words in
+  // the Assembly's mouth. The publisher renders audio on this host and posts
+  // over loopback, so loopback is the whole audience.
+  const peer = (req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+  if (peer !== '127.0.0.1' && peer !== '::1') {
+    console.warn(`[voice] publish refused: not from loopback (${peer})`);
+    return res.status(403).json({
+      error: 'not_local',
+      message: 'publishing is accepted over loopback only',
+    });
+  }
+
   const problems = gate.checkOriginInput(body.origin);
   if (problems.length) {
     console.warn(`[voice] publish refused: ${problems.join(' · ')}`);
@@ -105,10 +118,27 @@ app.post('/api/voice/publish', express.json({ limit: '256kb' }), (req, res) => {
   if (typeof body.text !== 'string' || !body.text.trim()) {
     return res.status(400).json({ error: 'invalid_request', message: 'text is required' });
   }
-  if (typeof body.audio_file !== 'string' || !/^audio\/[\w.-]+$/.test(body.audio_file)) {
+  // The shape alone is not enough. "audio/.." satisfies a naive pattern, and a
+  // name that was never rendered produces a card that plays silence — the exact
+  // mirror of the bug this gate exists to prevent, one directory over. So the
+  // name is constrained AND the file is required to actually be there.
+  const audioName = typeof body.audio_file === 'string' ? body.audio_file : '';
+  const audioOk =
+    /^audio\/[A-Za-z0-9][\w.-]*\.(mp3|ogg|wav|m4a)$/.test(audioName) &&
+    !audioName.includes('..');
+  if (!audioOk) {
     return res.status(400).json({
       error: 'invalid_request',
-      message: 'audio_file must be a rendered file under audio/',
+      message: 'audio_file must be a rendered audio file directly under audio/',
+    });
+  }
+  const audioPath = path.join(AUDIO_DIR, path.basename(audioName));
+  if (!fs.existsSync(audioPath) || fs.statSync(audioPath).size === 0) {
+    return res.status(400).json({
+      error: 'audio_missing',
+      message:
+        `${audioName} is not on disk, or is empty. A record pointing at audio ` +
+        `nobody can play is a voice that cannot be heard — render it first.`,
     });
   }
 
