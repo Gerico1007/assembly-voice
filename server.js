@@ -40,15 +40,42 @@ if (fs.existsSync(agentsDir)) {
   });
 }
 
+const store = require('./lib/manifest-store');
+
+/**
+ * Reads on the display path stay forgiving — a torn manifest should degrade the
+ * feed, never take the portal down. But it must not be mistaken for an empty
+ * history, so it is logged loudly and never handed to a writer.
+ */
 const readMessages = () => {
   try {
-    return JSON.parse(fs.readFileSync(MESSAGES_FILE, 'utf8'));
+    return store.readManifest(MESSAGES_FILE);
   } catch (e) {
-    return { messages: [] };
+    console.error(`[voice] manifest unreadable: ${e.message}`);
+    return { messages: [], degraded: true };
   }
 };
-const writeMessages = (data) => {
-  fs.writeFileSync(MESSAGES_FILE, JSON.stringify(data, null, 2) + '\n');
+
+/**
+ * Every write goes through updateManifest: one cross-language lock, a fresh
+ * read inside it, and an atomic rename. The read-inside-the-lock is what
+ * removes the lost update — previously this handler read the file, a publisher
+ * appended, and the handler then wrote its stale snapshot back, deleting the
+ * new message.
+ */
+const updateMessages = (res, mutate) => {
+  try {
+    return { ok: true, data: store.updateManifest(MESSAGES_FILE, mutate) };
+  } catch (e) {
+    const corrupt = e instanceof store.ManifestCorrupt;
+    console.error(`[voice] refusing to write: ${e.message}`);
+    res.status(corrupt ? 500 : 503).json({
+      error: corrupt
+        ? 'message history is unreadable — refusing to overwrite it'
+        : 'another writer is holding the message history; try again',
+    });
+    return { ok: false };
+  }
 };
 
 app.get('/api/agents', (req, res) => res.json(agents));
@@ -62,24 +89,32 @@ app.get('/api/messages/unlistened', (req, res) => {
 });
 
 app.post('/api/messages/:id/listened', (req, res) => {
-  const data = readMessages();
-  const msg = data.messages.find((m) => m.id === req.params.id);
-  if (!msg) return res.status(404).json({ error: 'Message not found' });
-  msg.listened = true;
-  writeMessages(data);
-  res.json({ ok: true, message: msg });
+  let found = null;
+  const result = updateMessages(res, (data) => {
+    found = data.messages.find((m) => m.id === req.params.id);
+    if (!found) return false;          // nothing to write — leave the file alone
+    if (found.listened) return false;  // already marked; do not rewrite 340KB
+    found.listened = true;
+    return true;
+  });
+  if (!result.ok) return;
+  if (!found) return res.status(404).json({ error: 'Message not found' });
+  res.json({ ok: true, message: found });
 });
 
 app.post('/api/messages/listen-all', (req, res) => {
-  const data = readMessages();
   let marked = 0;
-  data.messages.forEach((m) => {
-    if (!m.listened) {
-      m.listened = true;
-      marked += 1;
-    }
+  const result = updateMessages(res, (data) => {
+    marked = 0;
+    data.messages.forEach((m) => {
+      if (!m.listened) {
+        m.listened = true;
+        marked += 1;
+      }
+    });
+    return marked > 0;
   });
-  if (marked > 0) writeMessages(data);
+  if (!result.ok) return;
   res.json({ ok: true, marked });
 });
 

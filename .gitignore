@@ -34,3 +34,7 @@ __pycache__/
 # Runtime artifacts (TTS portal)
 audio/
 messages.json
+
+# Manifest backups — same reason messages.json is ignored: it is voice DATA,
+# not source. Rotated by scripts/manifest_store.py and lib/manifest-store.js.
+backups/

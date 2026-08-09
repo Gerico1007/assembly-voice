@@ -19,6 +19,11 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 import edge_tts
+
+# Local sibling module — the manifest is shared with server.js and must be
+# written the same careful way from both.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import manifest_store  # noqa: E402
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -222,14 +227,10 @@ async def amain() -> int:
     communicate = edge_tts.Communicate(args.text, voice)
     await communicate.save(out_path)
 
-    if MESSAGES_FILE.exists():
-        try:
-            with open(MESSAGES_FILE, encoding="utf-8") as f:
-                manifest = json.load(f)
-        except Exception:
-            manifest = {"messages": []}
-    else:
-        manifest = {"messages": []}
+    # The manifest is read, mutated and written under one cross-language lock in
+    # manifest_store.append_message below. Nothing is parsed here any more: the
+    # old code caught a parse failure into an empty manifest and then truncated
+    # the file, which is how 407 records could vanish on exit code 0.
 
     entry = {
         "id": str(uuid.uuid4()),
@@ -241,14 +242,24 @@ async def amain() -> int:
         "pwd": os.getcwd(),
         "listened": False,
     }
-    manifest["messages"].append(entry)
-
-    with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    # One lock, one atomic rename. If the manifest cannot be read, this raises
+    # rather than starting from an empty one — and if it raises, the audio we
+    # just wrote is removed, because a voice nobody can find is litter that the
+    # portal serves publicly forever. Two zero-byte orphans from the old
+    # behaviour are still on disk.
+    try:
+        total = manifest_store.append_message(MESSAGES_FILE, entry)
+    except Exception as exc:
+        try:
+            out_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        print(f"REFUSED  {exc}", file=sys.stderr)
+        print(f"         nothing was published, and {fname} was removed", file=sys.stderr)
+        return 1
 
     size = out_path.stat().st_size
-    print(f"OK  id={entry['id']}")
+    print(f"OK  id={entry['id']}  ({total} messages)")
     print(f"    persona={persona}  lang={lang}  voice={voice}")
     print(f"    audio={out_path}  bytes={size}")
     print(f"    public_url={PUBLIC_AUDIO_BASE}/{fname}")
