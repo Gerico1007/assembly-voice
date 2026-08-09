@@ -123,7 +123,23 @@ app.use(express.static(path.join(ROOT, 'dist')));
 
 let watchTimer = null;
 let lastBroadcastId = null;
-fs.watch(MESSAGES_FILE, () => {
+
+/**
+ * Watch the DIRECTORY, not the file.
+ *
+ * fs.watch on a path binds to the inode behind it. Since writes became atomic
+ * (temp file, fsync, rename) the old inode is unlinked on every publish, so a
+ * file watch fires once for the rename and is then bound to something nobody
+ * will ever write to again. Measured: in-place write → 1 event; first rename →
+ * events; second rename → nothing, watcher dead.
+ *
+ * That is a regression the atomic-write fix introduced, and it is the quiet
+ * kind: the portal keeps serving, /api/messages stays correct, and only the
+ * live push stops — so the feed simply stops moving and nothing reports an
+ * error. A directory watch survives the rename because the directory's inode
+ * does not change.
+ */
+const broadcastLatest = () => {
   if (watchTimer) clearTimeout(watchTimer);
   watchTimer = setTimeout(() => {
     const data = readMessages();
@@ -134,6 +150,14 @@ fs.watch(MESSAGES_FILE, () => {
       console.log(`📨 broadcast new_message  persona=${latest.persona} lang=${latest.lang}`);
     }
   }, 200);
+};
+
+const MESSAGES_BASENAME = path.basename(MESSAGES_FILE);
+fs.watch(ROOT, (_event, filename) => {
+  // The temp file and the lock live in this directory too; only the manifest
+  // landing is news. A null filename means the platform did not tell us which
+  // file changed, in which case checking is cheaper than missing a message.
+  if (filename === null || filename === MESSAGES_BASENAME) broadcastLatest();
 });
 
 io.on('connection', (socket) => {
