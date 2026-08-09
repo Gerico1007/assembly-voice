@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const crypto = require('crypto');
 const https = require('https');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -77,6 +78,79 @@ const updateMessages = (res, mutate) => {
     return { ok: false };
   }
 };
+
+const gate = require('./lib/origin-gate');
+
+/**
+ * POST /api/voice/publish — the only way a message enters the manifest.
+ *
+ * Before this route existed there was no call to refuse: tts-generate.py wrote
+ * messages.json directly, so nothing could ever ask a publisher where it was
+ * standing. William's ruling is that a voice nobody can answer should not be
+ * published at all, and a ruling needs a door to stand in.
+ *
+ * The gate is deliberately the FIRST thing that happens. A refused publish must
+ * cost the caller a round trip and nothing else — no record, no manifest write,
+ * and the caller deletes the audio it had already rendered.
+ */
+app.post('/api/voice/publish', express.json({ limit: '256kb' }), (req, res) => {
+  const body = req.body || {};
+
+  const problems = gate.checkOriginInput(body.origin);
+  if (problems.length) {
+    console.warn(`[voice] publish refused: ${problems.join(' · ')}`);
+    return res.status(400).json(gate.refusal(problems));
+  }
+
+  if (typeof body.text !== 'string' || !body.text.trim()) {
+    return res.status(400).json({ error: 'invalid_request', message: 'text is required' });
+  }
+  if (typeof body.audio_file !== 'string' || !/^audio\/[\w.-]+$/.test(body.audio_file)) {
+    return res.status(400).json({
+      error: 'invalid_request',
+      message: 'audio_file must be a rendered file under audio/',
+    });
+  }
+
+  const origin = gate.resolveOrigin(body.origin);
+  const entry = {
+    id: body.id || crypto.randomUUID(),
+    timestamp: body.timestamp || new Date().toISOString(),
+    text: body.text,
+    lang: body.lang || 'fr',
+    persona: body.persona || null,
+    audio_file: body.audio_file,
+    // Kept so ~400 existing records and this one still render through one path.
+    pwd: origin.cwd,
+    listened: false,
+    origin,
+  };
+
+  let total = 0;
+  try {
+    const data = store.updateManifest(MESSAGES_FILE, (m) => {
+      m.messages.push(entry);
+      total = m.messages.length;
+      return true;
+    });
+    void data;
+  } catch (e) {
+    const corrupt = e instanceof store.ManifestCorrupt;
+    console.error(`[voice] publish could not write: ${e.message}`);
+    return res.status(corrupt ? 500 : 503).json({
+      error: corrupt ? 'history_unreadable' : 'history_locked',
+      message: corrupt
+        ? 'message history is unreadable — refusing to overwrite it'
+        : 'another writer is holding the message history; try again',
+    });
+  }
+
+  console.log(
+    `[voice] published ${entry.id} from ${origin.user}@${origin.host} ` +
+    `${origin.target.multiplexer}:${origin.target.pane || origin.target.session} reach=${origin.reach}`
+  );
+  res.status(201).json({ ok: true, id: entry.id, total, origin });
+});
 
 app.get('/api/agents', (req, res) => res.json(agents));
 

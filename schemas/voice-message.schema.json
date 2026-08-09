@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gmusic.local/schemas/assembly-voice/voice-message.schema.json",
+  "title": "Assembly Voice Message",
+  "type": "object",
+  "required": [
+    "id",
+    "timestamp",
+    "text",
+    "lang",
+    "persona",
+    "listened"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lang": {
+      "type": "string",
+      "enum": [
+        "fr",
+        "en"
+      ]
+    },
+    "persona": {
+      "type": "string"
+    },
+    "audio_file": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Relative path such as audio/file.mp3. May be null for non-TTS messages."
+    },
+    "pwd": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "listened": {
+      "type": "boolean"
+    },
+    "source": {
+      "type": "string"
+    },
+    "project_path": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "origin": {
+      "type": "object",
+      "description": "Return address declared by the publisher, with serverHost/reach/attested stamped by the server. Added 2026-07-29 so a listener can answer the agent that published a message instead of guessing from global config. Permitted by this schema's own additionalProperties:true; documented here so it stops being invisible. NOT in the top-level `required` list, and deliberately so: since 2026-08-04 every publish path REFUSES a record without one (see checkOriginInput in src/origin.ts), but ~100 records predate that rule and must keep validating and rendering. Required on write, optional on read — the asymmetry is the point, not an oversight.",
+      "required": [
+        "schemaVersion",
+        "user",
+        "host",
+        "target",
+        "serverHost",
+        "reach",
+        "attested"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "user": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "target": {
+          "type": "object",
+          "description": "Discriminated on multiplexer. tmux carries session (durable); herdr carries workspace+pane and label, where label is the handle that survives a herdr restart and pane is not.",
+          "properties": {
+            "multiplexer": {
+              "type": "string",
+              "enum": [
+                "tmux",
+                "herdr",
+                "none"
+              ]
+            },
+            "session": {
+              "type": "string"
+            },
+            "window": {
+              "type": "string"
+            },
+            "pane": {
+              "type": "string"
+            },
+            "workspace": {
+              "type": "string"
+            },
+            "tab": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "agent": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "multiplexer"
+          ]
+        },
+        "serverHost": {
+          "type": "string",
+          "description": "Stamped by the server. Never accepted from the caller."
+        },
+        "reach": {
+          "type": "string",
+          "enum": [
+            "steerable",
+            "other-host",
+            "not-multiplexed",
+            "unknown"
+          ],
+          "description": "The server's verdict on answerability, not the publisher's claim."
+        },
+        "attested": {
+          "type": "string",
+          "enum": [
+            "self-declared",
+            "server"
+          ],
+          "description": "self-declared means nothing verified the publisher's claim about its own location. A listener must be shown this."
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
