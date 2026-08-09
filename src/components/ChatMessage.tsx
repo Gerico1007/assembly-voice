@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { VoiceMessage, ToastType } from '../types';
 import useToasts from '../hooks/useToasts';
 import { withRuntimeBasePath } from '../runtimePaths';
-import { readProvenance } from '../lib/provenance';
+import { readProvenance, jumpCommand } from '../lib/provenance';
 
 interface ChatMessageProps {
   message: VoiceMessage;
@@ -36,7 +36,12 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onListened }) => {
   };
   const { addToast } = useToasts();
   const [expanded, setExpanded] = useState(false);
-  const isLong = message.text.length > 140;
+  // 140 was fine when messages were one line. An agent describing its own room
+  // speaks for ~40 seconds, which is 300–600 characters, so every one of them
+  // hit the ellipsis and the transcript stopped being readable — you could hear
+  // the message or tap it open, but not simply read it. The point of having text
+  // beside audio is choosing which one you have time for.
+  const isLong = message.text.length > 900;
   const displayed = expanded || !isLong ? message.text : message.text.slice(0, 140) + '…';
 
   const handlePlay = () => {
@@ -73,6 +78,23 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onListened }) => {
     addToast('CD command copied to clipboard', ToastType.Success, 2000);
   };
 
+  // The other road to the same room: the cockpit link is for a thumb, this is
+  // for a keyboard. Copy, paste into any terminal, and you are standing in the
+  // pane that spoke.
+  const jump = message.origin ? jumpCommand(message.origin) : null;
+  const copyJump = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!jump) return;
+    navigator.clipboard.writeText(jump);
+    addToast(
+      message.origin?.target.multiplexer === 'herdr'
+        ? 'Copied — opens the herdr tab holding that pane'
+        : 'Copied — attaches and selects that exact pane',
+      ToastType.Success,
+      2600
+    );
+  };
+
   return (
     <div className="animate-slide-in">
       <div className={`glass border-l-4 ${persona.border} rounded-xl p-4 shadow-lg`}>
@@ -98,6 +120,15 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onListened }) => {
                 title={`ssh ${sshTarget}`}
               >
                 ssh
+              </button>
+            )}
+            {jump && (
+              <button
+                onClick={copyJump}
+                className="text-[10px] bg-amber-500 bg-opacity-20 hover:bg-opacity-40 text-amber-200 px-1.5 py-0.5 rounded border border-amber-500 border-opacity-40 transition-all uppercase font-bold tracking-tighter"
+                title={jump}
+              >
+                jump
               </button>
             )}
             <span className="flex items-center gap-2 text-xs text-gray-300">

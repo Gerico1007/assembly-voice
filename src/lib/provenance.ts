@@ -62,6 +62,50 @@ export function cockpitLink(o: VoiceOrigin, draft = ''): string | null {
   return null;
 }
 
+/** Short hostnames are what a shell reports; reaching one needs the tailnet. */
+const TAILNET_SUFFIX =
+  (import.meta as unknown as { env?: Record<string, string> }).env
+    ?.VITE_TAILNET_SUFFIX || '.ferret-harmonic.ts.net';
+
+/**
+ * The command that puts you IN the pane, for when you are at a keyboard rather
+ * than on a phone.
+ *
+ * The cockpit link and this are the same destination by two roads: one for a
+ * thumb, one for a terminal. Neither is a substitute for the other — answering
+ * from a walk and sitting down in the room are different acts.
+ *
+ * herdr has no `pane focus <id>`; focus is directional only. So herdr lands you
+ * on the pane's TAB, which is as close as its CLI allows, and the pane is named
+ * in a comment so you can see which one you were sent for. tmux can select the
+ * exact pane, and does.
+ */
+export function jumpCommand(o: VoiceOrigin): string | null {
+  const t = o.target;
+  const host = o.host && !o.host.includes('.') ? `${o.host}${TAILNET_SUFFIX}` : o.host;
+  const ssh = o.user && host ? `ssh -t ${o.user}@${host} ` : '';
+
+  if (t.multiplexer === 'herdr' && t.workspace && t.session) {
+    const focus = [
+      `herdr workspace focus ${t.workspace}`,
+      t.tab ? `herdr tab focus ${t.tab}` : null,
+      `herdr session attach ${t.session}`,
+    ]
+      .filter(Boolean)
+      .join(' && ');
+    const note = t.pane ? `   # pane ${t.pane}${t.label ? ` · ${t.label}` : ''}` : '';
+    return ssh ? `${ssh}'${focus}'${note}` : `${focus}${note}`;
+  }
+
+  if (t.multiplexer === 'tmux' && t.session) {
+    const sel = t.pane ? ` \\; select-pane -t ${t.pane}` : '';
+    const inner = `tmux attach -t ${t.session}${sel}`;
+    return ssh ? `${ssh}'${inner}'` : inner;
+  }
+
+  return null;
+}
+
 export function readProvenance(m: VoiceMessage): Provenance {
   const o = m.origin;
 
