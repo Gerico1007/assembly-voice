@@ -80,30 +80,73 @@ const TAILNET_SUFFIX =
  * in a comment so you can see which one you were sent for. tmux can select the
  * exact pane, and does.
  */
-export function jumpCommand(o: VoiceOrigin): string | null {
+function paneNote(t: VoiceOrigin['target']): string {
+  return t.pane ? `   # pane ${t.pane}${t.label ? ` · ${t.label}` : ''}` : '';
+}
+
+/**
+ * The command to run WHERE YOU ALREADY ARE — no ssh, because you are on the box.
+ *
+ * The `focus` verbs act on the running herdr server, not on your shell, so if a
+ * herdr is already open on this machine these two lines simply move the view
+ * you are looking at. That is the answer to "can it go into the herdr I already
+ * have open instead of opening a new one": yes, and it is the normal case.
+ *
+ * `session attach` is therefore guarded on $HERDR_ENV, which herdr exports into
+ * every pane it owns. Inside herdr the guard is satisfied and nothing attaches —
+ * your existing window just turns to face the right room. Outside it, you get a
+ * herdr. One string, correct in both situations.
+ */
+export function localJumpCommand(o: VoiceOrigin): string | null {
   const t = o.target;
-  const host = o.host && !o.host.includes('.') ? `${o.host}${TAILNET_SUFFIX}` : o.host;
-  const ssh = o.user && host ? `ssh -t ${o.user}@${host} ` : '';
 
   if (t.multiplexer === 'herdr' && t.workspace && t.session) {
     const focus = [
       `herdr workspace focus ${t.workspace}`,
       t.tab ? `herdr tab focus ${t.tab}` : null,
-      `herdr session attach ${t.session}`,
     ]
       .filter(Boolean)
       .join(' && ');
-    const note = t.pane ? `   # pane ${t.pane}${t.label ? ` · ${t.label}` : ''}` : '';
-    return ssh ? `${ssh}'${focus}'${note}` : `${focus}${note}`;
+    return `${focus} && { [ -n "$HERDR_ENV" ] || herdr session attach ${t.session}; }${paneNote(t)}`;
   }
 
   if (t.multiplexer === 'tmux' && t.session) {
     const sel = t.pane ? ` \\; select-pane -t ${t.pane}` : '';
-    const inner = `tmux attach -t ${t.session}${sel}`;
-    return ssh ? `${ssh}'${inner}'` : inner;
+    // Inside tmux you switch clients; outside it you attach. $TMUX says which.
+    return (
+      `{ [ -n "$TMUX" ] && tmux switch-client -t ${t.session}${sel} || ` +
+      `tmux attach -t ${t.session}${sel}; }`
+    );
   }
 
   return null;
+}
+
+/**
+ * The same destination, from anywhere else — wrapped in the ssh hop that gets
+ * you onto the host first. `-t` because both multiplexers need a real terminal.
+ */
+export function sshJumpCommand(o: VoiceOrigin): string | null {
+  const local = localJumpCommand(o);
+  if (!local) return null;
+  const host = o.host && !o.host.includes('.') ? `${o.host}${TAILNET_SUFFIX}` : o.host;
+  if (!o.user || !host) return null;
+
+  const t = o.target;
+  // Over ssh you are never already inside the multiplexer, so the guards are
+  // dropped and the plain attach is used — simpler to read in a strange shell.
+  const inner =
+    t.multiplexer === 'herdr'
+      ? [
+          `herdr workspace focus ${t.workspace}`,
+          t.tab ? `herdr tab focus ${t.tab}` : null,
+          `herdr session attach ${t.session}`,
+        ]
+          .filter(Boolean)
+          .join(' && ')
+      : `tmux attach -t ${t.session}${t.pane ? ` \\; select-pane -t ${t.pane}` : ''}`;
+
+  return `ssh -t ${o.user}@${host} '${inner}'${paneNote(t)}`;
 }
 
 export function readProvenance(m: VoiceMessage): Provenance {

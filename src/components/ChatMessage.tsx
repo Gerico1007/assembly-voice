@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { VoiceMessage, ToastType } from '../types';
 import useToasts from '../hooks/useToasts';
 import { withRuntimeBasePath } from '../runtimePaths';
-import { readProvenance, jumpCommand } from '../lib/provenance';
+import { readProvenance, sshJumpCommand, localJumpCommand } from '../lib/provenance';
 
 interface ChatMessageProps {
   message: VoiceMessage;
@@ -50,49 +50,20 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onListened }) => {
 
   const prov = readProvenance(message);
 
-  // Where the speaker actually said it was. Never a default: a message that
-  // declared no cwd used to be handed "/home/gmusic/salix/repos/assembly-voice",
-  // which is invention presented as fact.
-  const cwd = message.origin?.cwd || message.pwd || null;
-  const sshTarget = message.origin?.user && message.origin?.host
-    ? `${message.origin.user}@${message.origin.host}`
-    : null;
+  // Two roads to the same room, and the old buttons were neither. `pwd` copied
+  // a cd into a directory and `ssh` copied a hardcoded host — the same two
+  // strings on every card, telling you nothing about where THIS voice came
+  // from and dropping you nowhere near the pane that spoke.
+  //
+  //   remote · you are elsewhere, so hop the host first
+  //   pane   · you are already on the box, so just go
+  const remoteJump = message.origin ? sshJumpCommand(message.origin) : null;
+  const localJump = message.origin ? localJumpCommand(message.origin) : null;
 
-  const copySSH = (e: React.MouseEvent) => {
+  const copy = (text: string, toast: string) => (e: React.MouseEvent) => {
     e.stopPropagation();
-    // The old line was hardcoded to gmusic@eury.ferret-harmonic.ts.net for every
-    // message, so a voice from another machine handed the listener a door to
-    // this one. That is the exact bug the origin field was introduced to end.
-    if (!sshTarget) return;
-    const command = cwd
-      ? `ssh -t ${sshTarget} "cd ${cwd} && exec bash"`
-      : `ssh -t ${sshTarget}`;
-    navigator.clipboard.writeText(command);
-    addToast('SSH command copied to clipboard', ToastType.Success, 2000);
-  };
-
-  const copyPWD = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!cwd) return;
-    navigator.clipboard.writeText(`cd ${cwd}`);
-    addToast('CD command copied to clipboard', ToastType.Success, 2000);
-  };
-
-  // The other road to the same room: the cockpit link is for a thumb, this is
-  // for a keyboard. Copy, paste into any terminal, and you are standing in the
-  // pane that spoke.
-  const jump = message.origin ? jumpCommand(message.origin) : null;
-  const copyJump = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!jump) return;
-    navigator.clipboard.writeText(jump);
-    addToast(
-      message.origin?.target.multiplexer === 'herdr'
-        ? 'Copied — opens the herdr tab holding that pane'
-        : 'Copied — attaches and selects that exact pane',
-      ToastType.Success,
-      2600
-    );
+    navigator.clipboard.writeText(text);
+    addToast(toast, ToastType.Success, 2600);
   };
 
   return (
@@ -103,32 +74,22 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onListened }) => {
             {persona.glyph} {persona.name}
           </span>
           <div className="flex items-center gap-2">
-            {/* Absence beats invention: no cwd, no cd button. */}
-            {cwd && (
+            {remoteJump && (
               <button
-                onClick={copyPWD}
+                onClick={copy(remoteJump, 'Copied — ssh in and land on that pane')}
                 className="text-[10px] bg-white bg-opacity-10 hover:bg-opacity-20 text-gray-300 px-1.5 py-0.5 rounded border border-white border-opacity-10 transition-all uppercase font-bold tracking-tighter"
-                title={`cd ${cwd}`}
-              >
-                pwd
-              </button>
-            )}
-            {sshTarget && (
-              <button
-                onClick={copySSH}
-                className="text-[10px] bg-white bg-opacity-10 hover:bg-opacity-20 text-gray-300 px-1.5 py-0.5 rounded border border-white border-opacity-10 transition-all uppercase font-bold tracking-tighter"
-                title={`ssh ${sshTarget}`}
+                title={remoteJump}
               >
                 ssh
               </button>
             )}
-            {jump && (
+            {localJump && (
               <button
-                onClick={copyJump}
+                onClick={copy(localJump, 'Copied — moves the herdr you already have open')}
                 className="text-[10px] bg-amber-500 bg-opacity-20 hover:bg-opacity-40 text-amber-200 px-1.5 py-0.5 rounded border border-amber-500 border-opacity-40 transition-all uppercase font-bold tracking-tighter"
-                title={jump}
+                title={localJump}
               >
-                jump
+                pane
               </button>
             )}
             <span className="flex items-center gap-2 text-xs text-gray-300">
