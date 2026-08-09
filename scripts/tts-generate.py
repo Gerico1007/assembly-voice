@@ -20,10 +20,6 @@ from urllib.request import Request, urlopen
 
 import edge_tts
 
-# Local sibling module — the manifest is shared with server.js and must be
-# written the same careful way from both.
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import manifest_store  # noqa: E402
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,6 +52,58 @@ DEFAULT_VOICES = {
     "fr": "fr-FR-DeniseNeural",
     "en": "en-US-AriaNeural",
 }
+
+
+# Local sibling modules — the manifest is shared with server.js and must be
+# written the same careful way from both.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import manifest_store  # noqa: E402
+from provenance import capture_origin  # noqa: E402
+
+# Where the gate lives. The publisher no longer writes the manifest itself:
+# it asks, and can be told no.
+PUBLISH_URL = os.environ.get("VOICE_PUBLISH_URL", "https://127.0.0.1:4444/api/voice/publish")
+
+
+class PublishRefused(RuntimeError):
+    """The server declined to publish. Carries the contract so the fix is obvious."""
+
+    def __init__(self, message: str, contract: str | None = None):
+        super().__init__(message)
+        self.contract = contract
+
+
+def publish_via_gate(entry: dict, origin: dict) -> int:
+    """POST the message to the portal's gate. Returns the new record count."""
+    import ssl
+
+    payload = dict(entry)
+    payload["origin"] = origin
+    body = json.dumps(payload).encode("utf-8")
+    req = Request(PUBLISH_URL, data=body, headers={"Content-Type": "application/json"})
+
+    # The portal serves self-signed TLS on loopback; the trust boundary here is
+    # the loopback interface, not the certificate.
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    try:
+        with urlopen(req, timeout=10, context=ctx) as resp:
+            return json.loads(resp.read()).get("total", 0)
+    except HTTPError as e:
+        try:
+            detail = json.loads(e.read())
+        except Exception:
+            detail = {}
+        problems = detail.get("problems") or [detail.get("message") or f"HTTP {e.code}"]
+        raise PublishRefused("; ".join(problems), detail.get("contract")) from e
+    except URLError as e:
+        raise PublishRefused(
+            f"the voice portal is not answering at {PUBLISH_URL} ({e.reason}). "
+            f"Publishing now goes through it so a voice can be refused for not "
+            f"saying where it came from — start assembly-voice.service and retry"
+        ) from e
 
 
 def load_environment() -> None:
@@ -232,6 +280,10 @@ async def amain() -> int:
     # old code caught a parse failure into an empty manifest and then truncated
     # the file, which is how 407 records could vanish on exit code 0.
 
+    # Read where we are standing BEFORE anything else about this message, so
+    # the declaration describes the publish and not some later state.
+    origin = capture_origin()
+
     entry = {
         "id": str(uuid.uuid4()),
         "timestamp": now.isoformat().replace("+00:00", "Z"),
@@ -242,20 +294,25 @@ async def amain() -> int:
         "pwd": os.getcwd(),
         "listened": False,
     }
-    # One lock, one atomic rename. If the manifest cannot be read, this raises
-    # rather than starting from an empty one — and if it raises, the audio we
-    # just wrote is removed, because a voice nobody can find is litter that the
-    # portal serves publicly forever. Two zero-byte orphans from the old
-    # behaviour are still on disk.
+    # The publish goes through the server's gate, which is the only place that
+    # can refuse a voice for not saying where it came from. Writing the manifest
+    # directly from here is what made that refusal impossible before.
+    #
+    # A refusal removes the audio we just rendered. The mp3 is written before
+    # the record, so every failure used to leave a file the portal serves
+    # publicly forever and nothing references — two zero-byte orphans from that
+    # shape are still on disk.
     try:
-        total = manifest_store.append_message(MESSAGES_FILE, entry)
-    except Exception as exc:
+        total = publish_via_gate(entry, origin)
+    except PublishRefused as exc:
         try:
             out_path.unlink(missing_ok=True)
         except OSError:
             pass
         print(f"REFUSED  {exc}", file=sys.stderr)
-        print(f"         nothing was published, and {fname} was removed", file=sys.stderr)
+        if exc.contract:
+            print(f"\n{exc.contract}", file=sys.stderr)
+        print(f"\n         nothing was published, and {fname} was removed", file=sys.stderr)
         return 1
 
     size = out_path.stat().st_size

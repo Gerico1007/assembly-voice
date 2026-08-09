@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const crypto = require('crypto');
 const https = require('https');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -77,6 +78,127 @@ const updateMessages = (res, mutate) => {
     return { ok: false };
   }
 };
+
+const gate = require('./lib/origin-gate');
+
+/**
+ * POST /api/voice/publish — the only way a message enters the manifest.
+ *
+ * Before this route existed there was no call to refuse: tts-generate.py wrote
+ * messages.json directly, so nothing could ever ask a publisher where it was
+ * standing. William's ruling is that a voice nobody can answer should not be
+ * published at all, and a ruling needs a door to stand in.
+ *
+ * The gate is deliberately the FIRST thing that happens. A refused publish must
+ * cost the caller a round trip and nothing else — no record, no manifest write,
+ * and the caller deletes the audio it had already rendered.
+ */
+app.post('/api/voice/publish', express.json({ limit: '256kb' }), (req, res) => {
+  const body = req.body || {};
+
+  // This server binds 0.0.0.0 and has no authentication, so an unauthenticated
+  // WRITE endpoint on it would let anyone who can reach the port put words in
+  // the Assembly's mouth. The publisher renders audio on this host and posts
+  // over loopback, so loopback is the whole audience.
+  const peer = (req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+  if (peer !== '127.0.0.1' && peer !== '::1') {
+    console.warn(`[voice] publish refused: not from loopback (${peer})`);
+    return res.status(403).json({
+      error: 'not_local',
+      message: 'publishing is accepted over loopback only',
+    });
+  }
+
+  // Loopback alone is a confused deputy. `app.use(cors())` above is allow-all,
+  // so a web page open in a browser ON THIS HOST can POST here and the peer
+  // address is 127.0.0.1 — the page borrows the machine's trust. A real
+  // publisher is a script; browsers attach Origin to every cross-origin POST
+  // and Referer when navigating from a page. Neither belongs on this route.
+  if (req.headers.origin || req.headers.referer) {
+    console.warn(
+      `[voice] publish refused: browser-initiated (origin=${req.headers.origin || '-'})`
+    );
+    return res.status(403).json({
+      error: 'not_a_publisher',
+      message:
+        'publishing is for a process on this host, not a page in a browser. ' +
+        'A request carrying Origin or Referer is a web page borrowing the ' +
+        'machine\'s trust, which is not the same thing as being trusted.',
+    });
+  }
+
+  const problems = gate.checkOriginInput(body.origin);
+  if (problems.length) {
+    console.warn(`[voice] publish refused: ${problems.join(' · ')}`);
+    return res.status(400).json(gate.refusal(problems));
+  }
+
+  if (typeof body.text !== 'string' || !body.text.trim()) {
+    return res.status(400).json({ error: 'invalid_request', message: 'text is required' });
+  }
+  // The shape alone is not enough. "audio/.." satisfies a naive pattern, and a
+  // name that was never rendered produces a card that plays silence — the exact
+  // mirror of the bug this gate exists to prevent, one directory over. So the
+  // name is constrained AND the file is required to actually be there.
+  const audioName = typeof body.audio_file === 'string' ? body.audio_file : '';
+  const audioOk =
+    /^audio\/[A-Za-z0-9][\w.-]*\.(mp3|ogg|wav|m4a)$/.test(audioName) &&
+    !audioName.includes('..');
+  if (!audioOk) {
+    return res.status(400).json({
+      error: 'invalid_request',
+      message: 'audio_file must be a rendered audio file directly under audio/',
+    });
+  }
+  const audioPath = path.join(AUDIO_DIR, path.basename(audioName));
+  if (!fs.existsSync(audioPath) || fs.statSync(audioPath).size === 0) {
+    return res.status(400).json({
+      error: 'audio_missing',
+      message:
+        `${audioName} is not on disk, or is empty. A record pointing at audio ` +
+        `nobody can play is a voice that cannot be heard — render it first.`,
+    });
+  }
+
+  const origin = gate.resolveOrigin(body.origin);
+  const entry = {
+    id: body.id || crypto.randomUUID(),
+    timestamp: body.timestamp || new Date().toISOString(),
+    text: body.text,
+    lang: body.lang || 'fr',
+    persona: body.persona || null,
+    audio_file: body.audio_file,
+    // Kept so ~400 existing records and this one still render through one path.
+    pwd: origin.cwd,
+    listened: false,
+    origin,
+  };
+
+  let total = 0;
+  try {
+    const data = store.updateManifest(MESSAGES_FILE, (m) => {
+      m.messages.push(entry);
+      total = m.messages.length;
+      return true;
+    });
+    void data;
+  } catch (e) {
+    const corrupt = e instanceof store.ManifestCorrupt;
+    console.error(`[voice] publish could not write: ${e.message}`);
+    return res.status(corrupt ? 500 : 503).json({
+      error: corrupt ? 'history_unreadable' : 'history_locked',
+      message: corrupt
+        ? 'message history is unreadable — refusing to overwrite it'
+        : 'another writer is holding the message history; try again',
+    });
+  }
+
+  console.log(
+    `[voice] published ${entry.id} from ${origin.user}@${origin.host} ` +
+    `${origin.target.multiplexer}:${origin.target.pane || origin.target.session} reach=${origin.reach}`
+  );
+  res.status(201).json({ ok: true, id: entry.id, total, origin });
+});
 
 app.get('/api/agents', (req, res) => res.json(agents));
 
