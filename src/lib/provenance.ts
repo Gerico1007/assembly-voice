@@ -125,6 +125,23 @@ export function localJumpCommand(o: VoiceOrigin): string | null {
 /**
  * The same destination, from anywhere else — wrapped in the ssh hop that gets
  * you onto the host first. `-t` because both multiplexers need a real terminal.
+ *
+ * WHY `bash -lc`, and not just the bare command. `ssh host 'cmd'` runs a shell
+ * that is neither interactive nor a login shell, so it reads no .bashrc and no
+ * .profile — and on eury that is exactly where ~/.local/bin joins PATH. Jerry
+ * pasted the first version of this from Tilia and got:
+ *
+ *     bash: line 1: herdr: command not found
+ *     Connection to eury.ferret-harmonic.ts.net closed.
+ *
+ * while `ssh eury` and then typing the same command worked, because that shell
+ * IS interactive. Reproduced: a non-interactive shell gets
+ * /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin and nothing else.
+ *
+ * `-l` makes it a login shell, so the remote user's own profile decides where
+ * their tools are. Preferred over hardcoding /home/gmusic/.local/bin/herdr,
+ * which would be a guess about somebody else's machine — the same class of
+ * mistake as inventing a pane id.
  */
 export function sshJumpCommand(o: VoiceOrigin): string | null {
   const local = localJumpCommand(o);
@@ -146,7 +163,7 @@ export function sshJumpCommand(o: VoiceOrigin): string | null {
           .join(' && ')
       : `tmux attach -t ${t.session}${t.pane ? ` \\; select-pane -t ${t.pane}` : ''}`;
 
-  return `ssh -t ${o.user}@${host} '${inner}'${paneNote(t)}`;
+  return `ssh -t ${o.user}@${host} 'bash -lc "${inner}"'${paneNote(t)}`;
 }
 
 export function readProvenance(m: VoiceMessage): Provenance {
