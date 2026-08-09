@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { VoiceMessage, ToastType } from '../types';
 import useToasts from '../hooks/useToasts';
 import { withRuntimeBasePath } from '../runtimePaths';
+import { readProvenance } from '../lib/provenance';
 
 interface ChatMessageProps {
   message: VoiceMessage;
@@ -42,19 +43,33 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onListened }) => {
     if (!message.listened) onListened(message.id);
   };
 
+  const prov = readProvenance(message);
+
+  // Where the speaker actually said it was. Never a default: a message that
+  // declared no cwd used to be handed "/home/gmusic/salix/repos/assembly-voice",
+  // which is invention presented as fact.
+  const cwd = message.origin?.cwd || message.pwd || null;
+  const sshTarget = message.origin?.user && message.origin?.host
+    ? `${message.origin.user}@${message.origin.host}`
+    : null;
+
   const copySSH = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const pwd = message.pwd || '/home/gmusic/salix/repos/assembly-voice';
-    const command = `ssh -t gmusic@eury.ferret-harmonic.ts.net "cd ${pwd} && exec bash"`;
+    // The old line was hardcoded to gmusic@eury.ferret-harmonic.ts.net for every
+    // message, so a voice from another machine handed the listener a door to
+    // this one. That is the exact bug the origin field was introduced to end.
+    if (!sshTarget) return;
+    const command = cwd
+      ? `ssh -t ${sshTarget} "cd ${cwd} && exec bash"`
+      : `ssh -t ${sshTarget}`;
     navigator.clipboard.writeText(command);
     addToast('SSH command copied to clipboard', ToastType.Success, 2000);
   };
 
   const copyPWD = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const pwd = message.pwd || '/home/gmusic/salix/repos/assembly-voice';
-    const command = `cd ${pwd}`;
-    navigator.clipboard.writeText(command);
+    if (!cwd) return;
+    navigator.clipboard.writeText(`cd ${cwd}`);
     addToast('CD command copied to clipboard', ToastType.Success, 2000);
   };
 
@@ -66,20 +81,25 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onListened }) => {
             {persona.glyph} {persona.name}
           </span>
           <div className="flex items-center gap-2">
-            <button
-              onClick={copyPWD}
-              className="text-[10px] bg-white bg-opacity-10 hover:bg-opacity-20 text-gray-300 px-1.5 py-0.5 rounded border border-white border-opacity-10 transition-all uppercase font-bold tracking-tighter"
-              title="Copy CD command"
-            >
-              pwd
-            </button>
-            <button
-              onClick={copySSH}
-              className="text-[10px] bg-white bg-opacity-10 hover:bg-opacity-20 text-gray-300 px-1.5 py-0.5 rounded border border-white border-opacity-10 transition-all uppercase font-bold tracking-tighter"
-              title="Copy SSH command"
-            >
-              ssh
-            </button>
+            {/* Absence beats invention: no cwd, no cd button. */}
+            {cwd && (
+              <button
+                onClick={copyPWD}
+                className="text-[10px] bg-white bg-opacity-10 hover:bg-opacity-20 text-gray-300 px-1.5 py-0.5 rounded border border-white border-opacity-10 transition-all uppercase font-bold tracking-tighter"
+                title={`cd ${cwd}`}
+              >
+                pwd
+              </button>
+            )}
+            {sshTarget && (
+              <button
+                onClick={copySSH}
+                className="text-[10px] bg-white bg-opacity-10 hover:bg-opacity-20 text-gray-300 px-1.5 py-0.5 rounded border border-white border-opacity-10 transition-all uppercase font-bold tracking-tighter"
+                title={`ssh ${sshTarget}`}
+              >
+                ssh
+              </button>
+            )}
             <span className="flex items-center gap-2 text-xs text-gray-300">
               <span>{LANG_FLAG[message.lang] ?? message.lang}</span>
               <span>{formatRelative(message.timestamp)}</span>
@@ -110,6 +130,67 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onListened }) => {
           onPlay={handlePlay}
           className="w-full"
         />
+
+        {/*
+          Provenance sits BETWEEN the audio and the action, and that order is
+          deliberate. The transcript is the index — you scan text to decide what
+          to play. The audio is the commitment. Provenance is the warrant, and it
+          arrives exactly when the decision is forming, thumb already near the
+          button. The action is the consequence, and never appears above its own
+          warrant.
+        */}
+        {prov.verdict && (
+          <p className="mt-3 text-[11px] leading-relaxed text-amber-200/90">
+            {prov.verdict}
+          </p>
+        )}
+
+        {prov.chips.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {prov.chips.map((c, i) => (
+              <span
+                key={i}
+                className={
+                  'text-[10px] font-mono px-2 py-0.5 rounded-full border ' +
+                  (c.tone === 'ok'
+                    ? 'border-green-500/40 bg-green-500/10 text-green-300'
+                    : c.tone === 'warn'
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                    : c.tone === 'solid'
+                    ? 'border-purple-400/40 bg-purple-400/10 text-purple-200'
+                    : c.tone === 'guess'
+                    ? 'border-dashed border-gray-500/40 text-gray-500'
+                    : 'border-white/10 text-gray-400')
+                }
+              >
+                {c.text}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {prov.action && (
+          <div className="mt-3">
+            <a
+              href={prov.action.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={
+                'inline-block text-[11px] font-mono font-bold px-3 py-2 rounded-lg border transition-all ' +
+                (prov.state === 'verified'
+                  ? 'border-amber-500 bg-amber-500 text-gray-900 hover:bg-amber-400'
+                  : 'border-amber-600/50 bg-amber-900/20 text-amber-300 hover:bg-amber-900/40')
+              }
+            >
+              {prov.action.label}
+            </a>
+            {prov.consequence && (
+              <p className="mt-1.5 text-[10px] leading-relaxed text-gray-500">
+                {prov.consequence}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
