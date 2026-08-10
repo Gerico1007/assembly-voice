@@ -62,6 +62,110 @@ export function cockpitLink(o: VoiceOrigin, draft = ''): string | null {
   return null;
 }
 
+/** Short hostnames are what a shell reports; reaching one needs the tailnet. */
+const TAILNET_SUFFIX =
+  (import.meta as unknown as { env?: Record<string, string> }).env
+    ?.VITE_TAILNET_SUFFIX || '.ferret-harmonic.ts.net';
+
+/**
+ * The command that puts you IN the pane, for when you are at a keyboard rather
+ * than on a phone.
+ *
+ * The cockpit link and this are the same destination by two roads: one for a
+ * thumb, one for a terminal. Neither is a substitute for the other — answering
+ * from a walk and sitting down in the room are different acts.
+ *
+ * herdr has no `pane focus <id>`; focus is directional only. So herdr lands you
+ * on the pane's TAB, which is as close as its CLI allows, and the pane is named
+ * in a comment so you can see which one you were sent for. tmux can select the
+ * exact pane, and does.
+ */
+function paneNote(t: VoiceOrigin['target']): string {
+  return t.pane ? `   # pane ${t.pane}${t.label ? ` · ${t.label}` : ''}` : '';
+}
+
+/**
+ * The command to run WHERE YOU ALREADY ARE — no ssh, because you are on the box.
+ *
+ * The `focus` verbs act on the running herdr server, not on your shell, so if a
+ * herdr is already open on this machine these two lines simply move the view
+ * you are looking at. That is the answer to "can it go into the herdr I already
+ * have open instead of opening a new one": yes, and it is the normal case.
+ *
+ * `session attach` is therefore guarded on $HERDR_ENV, which herdr exports into
+ * every pane it owns. Inside herdr the guard is satisfied and nothing attaches —
+ * your existing window just turns to face the right room. Outside it, you get a
+ * herdr. One string, correct in both situations.
+ */
+export function localJumpCommand(o: VoiceOrigin): string | null {
+  const t = o.target;
+
+  if (t.multiplexer === 'herdr' && t.workspace && t.session) {
+    const focus = [
+      `herdr workspace focus ${t.workspace}`,
+      t.tab ? `herdr tab focus ${t.tab}` : null,
+    ]
+      .filter(Boolean)
+      .join(' && ');
+    return `${focus} && { [ -n "$HERDR_ENV" ] || herdr session attach ${t.session}; }${paneNote(t)}`;
+  }
+
+  if (t.multiplexer === 'tmux' && t.session) {
+    const sel = t.pane ? ` \\; select-pane -t ${t.pane}` : '';
+    // Inside tmux you switch clients; outside it you attach. $TMUX says which.
+    return (
+      `{ [ -n "$TMUX" ] && tmux switch-client -t ${t.session}${sel} || ` +
+      `tmux attach -t ${t.session}${sel}; }`
+    );
+  }
+
+  return null;
+}
+
+/**
+ * The same destination, from anywhere else — wrapped in the ssh hop that gets
+ * you onto the host first. `-t` because both multiplexers need a real terminal.
+ *
+ * WHY `bash -lc`, and not just the bare command. `ssh host 'cmd'` runs a shell
+ * that is neither interactive nor a login shell, so it reads no .bashrc and no
+ * .profile — and on eury that is exactly where ~/.local/bin joins PATH. Jerry
+ * pasted the first version of this from Tilia and got:
+ *
+ *     bash: line 1: herdr: command not found
+ *     Connection to eury.ferret-harmonic.ts.net closed.
+ *
+ * while `ssh eury` and then typing the same command worked, because that shell
+ * IS interactive. Reproduced: a non-interactive shell gets
+ * /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin and nothing else.
+ *
+ * `-l` makes it a login shell, so the remote user's own profile decides where
+ * their tools are. Preferred over hardcoding /home/gmusic/.local/bin/herdr,
+ * which would be a guess about somebody else's machine — the same class of
+ * mistake as inventing a pane id.
+ */
+export function sshJumpCommand(o: VoiceOrigin): string | null {
+  const local = localJumpCommand(o);
+  if (!local) return null;
+  const host = o.host && !o.host.includes('.') ? `${o.host}${TAILNET_SUFFIX}` : o.host;
+  if (!o.user || !host) return null;
+
+  const t = o.target;
+  // Over ssh you are never already inside the multiplexer, so the guards are
+  // dropped and the plain attach is used — simpler to read in a strange shell.
+  const inner =
+    t.multiplexer === 'herdr'
+      ? [
+          `herdr workspace focus ${t.workspace}`,
+          t.tab ? `herdr tab focus ${t.tab}` : null,
+          `herdr session attach ${t.session}`,
+        ]
+          .filter(Boolean)
+          .join(' && ')
+      : `tmux attach -t ${t.session}${t.pane ? ` \\; select-pane -t ${t.pane}` : ''}`;
+
+  return `ssh -t ${o.user}@${host} 'bash -lc "${inner}"'${paneNote(t)}`;
+}
+
 export function readProvenance(m: VoiceMessage): Provenance {
   const o = m.origin;
 
